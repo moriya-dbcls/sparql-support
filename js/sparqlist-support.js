@@ -293,7 +293,7 @@ var SPARQListSupport = SPARQListSupport || {
 		autoCloseBrackets: true,
 		lineNumbers: true,
 		sparqlSupportAutoComp: ta_id,
-		sparqlSupportInnerMoed: ta_id,
+		sparqlSupportInnerMode: ta_id,
 		extraKeys: {"Tab": function(instance) { return false; },
 			    "Ctrl-Space": function(instance) { return false; }}
 	    };
