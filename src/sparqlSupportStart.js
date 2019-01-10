@@ -1,3 +1,5 @@
+import CodeMirror from "codemirror/lib/codemirror";
+
 var id = "query";
 
 var editor = CodeMirror.fromTextArea(document.getElementById(id), {

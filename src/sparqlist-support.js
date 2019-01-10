@@ -5,7 +5,9 @@
 // Copyright (c) 2017 Yuki Moriya (DBCLS)
 // http://opensource.org/licenses/mit-license.php
 
-var SPARQListSupport = SPARQListSupport || {
+import CodeMirror from "codemirror/lib/codemirror";
+
+const SPARQListSupport = {
 
     path: location.pathname,
     runJS: new Function,
@@ -1443,17 +1445,7 @@ window.onerror = function (message, file, line, col, error) {
 
 
 // CodeMirror addon for SPARQList-support
-(function(mod) {
-  if (typeof exports == "object" && typeof module == "object") // CommonJS
-    mod(require("./codemirror/lib/codemirror"));
-  else if (typeof define == "function" && define.amd) // AMD
-    define(["./codemirror/lib/codemirror"], mod);
-  else // Plain browser env
-    mod(CodeMirror);
-})(function(CodeMirror) {
-  "use strict";
-
-    CodeMirror.defineOption("sparqListSupportAutoSave", false, function(cm, id) {
+CodeMirror.defineOption("sparqListSupportAutoSave", false, function(cm, id) {
 	var data = cm.state.selectionPointer;
 	if (id) {
 	    data = cm.state.selectionPointer = {
@@ -1467,49 +1459,49 @@ window.onerror = function (message, file, line, col, error) {
 	    initDiv(cm, id);
 	    initDivInner(cm, id);
 	}
-    });
+});
    
-    var Pos = CodeMirror.Pos;
+var Pos = CodeMirror.Pos;
     
-    var ssParam = {
+var ssParam = {
 	preString: ""
-    }
+}
 
-    /// event
-    //////////////////////////////////
+/// event
+//////////////////////////////////
     
-    function keyDown(cm, e, id){
+function keyDown(cm, e, id){
 	saveCode(cm, id);
-    }
+}
 
-    function keyUp(cm, e, id){
+function keyUp(cm, e, id){
 	saveCode(cm, id);
-    }
+}
     
 
-    /// div value <-> textarea code --> localStorage
-    //////////////////////////////////
+/// div value <-> textarea code --> localStorage
+//////////////////////////////////
 
-    function saveCode(cm, id){
+function saveCode(cm, id){
 	var text =  cm.getValue();
 	ssParam.textarea[id].value = text;
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	localStorage[ssParam.pathName + '_sparql_code_' + selTab + "_" + id] = text;
 	if(text.match(/^##+ *endpoint +https*:\/\//)){ ssParam.formNode[id].action = text.match(/^##+ *endpoint +(https*:\/\/[^\s,;]+)/)[1];}
 	else{ssParam.formNode[id].action = ssParam.defaultEndpoint[id];}
-    }
+}
 
-    function setCmDiv(cm, id){
+function setCmDiv(cm, id){
 	var text = ssParam.textarea[id].value;
 	cm.setValue(text);
 	if(text.match(/^##+ *endpoint +https*:\/\//)){ ssParam.formNode[id].action = text.match(/^##+ *endpoint +(https*:\/\/[^\s,;]+)/)[1];}
 	else{ssParam.formNode[id].action = ssParam.defaultEndpoint[id];}
-    }
+}
     
-    /// init
-    //////////////////////////////////
+/// init
+//////////////////////////////////
     
-    function initDiv(cm, id){
+function initDiv(cm, id){
 	// CodeMirror style
 	if(!ssParam.textarea) {
 	    ssParam.textarea = {};
@@ -1676,9 +1668,9 @@ window.onerror = function (message, file, line, col, error) {
 	}
 	
 	saveCode(cm, id);
-    }
+}
 
-    function initDivInner(cm, id){
+function initDivInner(cm, id){
 	var codeMirrorDiv = ssParam.codeMirrorDiv[id];
 	var ulNode = document.getElementById("query_tab_list_" + id);
 	var liNode = document.createElement("li");
@@ -1700,9 +1692,9 @@ window.onerror = function (message, file, line, col, error) {
 	}
 	
 	ssParam.color = { "f": 1, "n": 63, "q": false};
-    }
+}
 
-    function switchInnerMode(id){
+function switchInnerMode(id){
 	if(ssParam.resultNode[id].style.display == "none"){
 	    ssParam.resultNode[id].style.display = "block";
 
@@ -1734,6 +1726,6 @@ window.onerror = function (message, file, line, col, error) {
 		ssParam.innerMode[id] = 0;
 	    }
 	}
-    }
-});
+}
 
+export default SPARQListSupport;

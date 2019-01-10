@@ -120,7 +120,7 @@
             textarea = textareaNodes[0];
 	}else{
 	    for(var i = 0; textareaNodes[i]; i++){
-		if(textareaNodes[i].id.toLowerCase() = idName){
+		if(textareaNodes[i].id.toLowerCase() == idName){
 		    textarea = teatareaNodes[i];
 		    break;
 		}

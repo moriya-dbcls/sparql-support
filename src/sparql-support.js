@@ -5,17 +5,9 @@
 // Copyright (c) 2015 Yuki Moriya (DBCLS)
 // http://opensource.org/licenses/mit-license.php
 
-(function(mod) {
-  if (typeof exports == "object" && typeof module == "object") // CommonJS
-    mod(require("./codemirror/lib/codemirror"));
-  else if (typeof define == "function" && define.amd) // AMD
-    define(["./codemirror/lib/codemirror"], mod);
-  else // Plain browser env
-    mod(CodeMirror);
-})(function(CodeMirror) {
-  "use strict";
+import CodeMirror from "codemirror/lib/codemirror";
 
-    CodeMirror.defineOption("sparqlSupportAutoComp", false, function(cm, id) {
+CodeMirror.defineOption("sparqlSupportAutoComp", false, function(cm, id) {
 	var data = cm.state.selectionPointer;
 	if(id === true) id = "query";
 	if (id) {
@@ -29,9 +21,9 @@
 
 	    initDiv(cm, id);
 	}
-    });
+});
 
-    CodeMirror.defineOption("sparqlSupportQueries", false, function(cm, id) {
+CodeMirror.defineOption("sparqlSupportQueries", false, function(cm, id) {
 	var data = cm.state.selectionPointer;
 	if(id === true) id = "query";
 	if (id) {
@@ -47,9 +39,9 @@
 
 	    initDivQueries(cm, id);
 	}
-    });
+});
     
-    CodeMirror.defineOption("sparqlSupportInnerMode", false, function(cm, id) {
+CodeMirror.defineOption("sparqlSupportInnerMode", false, function(cm, id) {
 	var data = cm.state.selectionPointer;
 	if(id === true) id = "query";
 	if (id) {
@@ -62,19 +54,19 @@
 
 	    initDivInner(cm, id);
 	}
-    });
+});
    
-    var Pos = CodeMirror.Pos;
+var Pos = CodeMirror.Pos;
     
-    var ssParam = {
+var ssParam = {
 	version: "0.8.5",
 	preString: ""
-    }
+}
 
-    /// event
-    //////////////////////////////////
+/// event
+//////////////////////////////////
     
-    function keyDown(cm, e, id){
+function keyDown(cm, e, id){
 	var caret = cm.getCursor('anchor');
 	if(ssParam.confirmFlag && !e.ctrlKey && e.keyCode != 16){ ssParam.confirmFlag = 0; ssParam.confirmBox.style.display = "none"; }
 	if(e.key == 'Tab' || (e.key == ' ' && e.ctrlKey)){
@@ -147,14 +139,14 @@
 	}
 	
 	saveCode(cm, id);
-    }
+}
 
-    function keyUp(cm, e, id){
+function keyUp(cm, e, id){
 	chkQueryPrefix(id);
 	saveCode(cm, id);
-    }
+}
     
-    function mouseDown(cm, e, id) {
+function mouseDown(cm, e, id) {
 	ssParam.termFrag = "";
 	ssParam.preString = "";
 	ssParam.confirmFlag = 0;
@@ -185,15 +177,15 @@
 		}
 	    }
 	}
-    }
+}
 
-    function mouseUp(id) {
+function mouseUp(id) {
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	document.getElementById("query_tab_" + selTab + "_" + id).style.left = "0px";
 	ssParam.dragFlag = false;
-    }
+}
 
-    function mouseMove(cm, e, id) {
+function mouseMove(cm, e, id) {
 	if(ssParam.dragFlag){
 	    var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	    var tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
@@ -210,40 +202,40 @@
 		}
 	    }
 	}
-    }
+}
 
-    function mouseDownInner(e, id) {
+function mouseDownInner(e, id) {
 	if(e.target.id == "submit_button_" + id && ssParam.innerMode[id]){
 	    var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	    innerModeRunQuery(selTab, id);
 	}else if(e.target.id == "query_tab_inner_" + id){
 	    switchInnerMode(id);
 	}
-    }
+}
 
-    /// div value <-> textarea code --> localStorage
-    //////////////////////////////////
+/// div value <-> textarea code --> localStorage
+//////////////////////////////////
 
-    function saveCode(cm, id){
+function saveCode(cm, id){
 	var text =  cm.getValue();
 	ssParam.textarea[id].value = text;
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	localStorage[ssParam.pathName + '_sparql_code_' + selTab + "_" + id] = text;
 	if(text.match(/^##+ *endpoint +https*:\/\//)){ ssParam.formNode[id].action = text.match(/^##+ *endpoint +(https*:\/\/[^\s,;]+)/)[1];}
 	else{ssParam.formNode[id].action = ssParam.defaultEndpoint[id];}
-    }
+}
 
-    function setCmDiv(cm, id){
+function setCmDiv(cm, id){
 	var text = ssParam.textarea[id].value;
 	cm.setValue(text);
 	if(text.match(/^##+ *endpoint +https*:\/\//)){ ssParam.formNode[id].action = text.match(/^##+ *endpoint +(https*:\/\/[^\s,;]+)/)[1];}
 	else{ssParam.formNode[id].action = ssParam.defaultEndpoint[id];}
-    }
+}
 
-    /// completion
-    //////////////////////////////////
+/// completion
+//////////////////////////////////
 
-    function tabKeyDown(cm, caret, id, keyCode){
+function tabKeyDown(cm, caret, id, keyCode){
 	var string;
 	var prefixCopy = false;
 	var line = cm.getLine(caret.line);
@@ -492,9 +484,9 @@
 	    }));
 	    return terms;
 	}
-    }
+}
 
-    function chkQueryPrefix(id){
+function chkQueryPrefix(id){
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	var text = localStorage[ssParam.pathName + '_sparql_code_' + selTab + "_" + id];
 	var lines = text.split(/[\n\r]/);
@@ -528,12 +520,12 @@
 	    pre.appendChild(document.createTextNode("Undefined prefix: " + Object.keys(unknownPrefix).join(" ")));
 	    ssParam.resultNode[id].appendChild(pre);
 	}
-    }
+}
 
-    /// inner mode
-    //////////////////////////////////
+/// inner mode
+//////////////////////////////////
     
-    async function innerModeRunQuery(queryTab, id){
+async function innerModeRunQuery(queryTab, id){
 	
 	//// loading loop
 	var loadingVis = function(runId, id){
@@ -835,13 +827,13 @@
 	    if(endTime - startTime > 30000) text += "\nor endpoint timeout (" + (Math.round((endTime - startTime) / 100) / 10) + " sec.)";
 	    outError({status: "", text: text}, runId);
 	}
-    }  
+}  
 
     
-    /// init
-    //////////////////////////////////
+/// init
+//////////////////////////////////
     
-   function initDiv(cm, id){
+function initDiv(cm, id){
 	// CodeMirror style
 	if(!ssParam.textarea) {
 	    ssParam.textarea = {};
@@ -1053,9 +1045,9 @@
 	}
 	
 	saveCode(cm, id);
-    }
+}
 
-    function initDivQueries(cm, id){
+function initDivQueries(cm, id){
 	var codeMirrorDiv = ssParam.codeMirrorDiv[id];
 	var ulNode = document.getElementById("query_tab_list_" + id);
 	if(!ssParam.results) ssParam.results = {};
@@ -1113,9 +1105,9 @@
 	ssParam.confirmBox.appendChild(remove);
 	
 	saveCode(cm, id);
-    }
+}
 
-    function initDivInner(cm, id){
+function initDivInner(cm, id){
 	var codeMirrorDiv = ssParam.codeMirrorDiv[id];
 	var ulNode = document.getElementById("query_tab_list_" + id);
 	var liNode = document.createElement("li");
@@ -1137,12 +1129,12 @@
 	}
 	
 	ssParam.color = { "f": 1, "n": 63, "q": false};
-    }
+}
     
-    /// tabbed  mode
-    //////////////////////////////////
+/// tabbed  mode
+//////////////////////////////////
 
-    function addTab(cm, id){
+function addTab(cm, id){
 	var tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]) + 1;
 	var liNode = document.createElement("li");
 	var plusNode = document.getElementById("query_tab_list_" + id).childNodes[tabNum];
@@ -1155,9 +1147,9 @@
 	ssParam.results['sparql_res_' + tabNum + "_" + id] = "";
 	changeTab(cm, tabNum, id);
 	localStorage[ssParam.pathName + '_sparql_code_tab_' + tabNum + "_" + id] = "";
-    }
+}
 
-    function removeTab(cm, id){
+function removeTab(cm, id){
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	if(localStorage[ssParam.pathName + '_sparql_code_' + selTab + "_" + id]){
 	    changeRemoveConfirm();
@@ -1165,9 +1157,9 @@
 	}else{
 	    removeTabRun(cm, id);
 	}
-    }
+}
     
-    function removeTabRun(cm, id){
+function removeTabRun(cm, id){
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	var tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
 	for(var i = selTab; i < tabNum; i++){
@@ -1199,9 +1191,9 @@
 	    ssParam.resultNode[id].appendChild(resTable);
 	}
 	setCmDiv(cm, id);
-    }
+}
 
-    function changeTab(cm, newTab, id){
+function changeTab(cm, newTab, id){
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	if(localStorage[ssParam.pathName + '_sparql_code_' + newTab + "_" + id]) ssParam.textarea[id].value = localStorage[ssParam.pathName + '_sparql_code_' + newTab + "_" + id];
 	else ssParam.textarea[id].value = "";
@@ -1232,9 +1224,9 @@
 	document.getElementById("query_tab_" + selTab + "_" + id).style.cursor = "default";
 	localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id] = newTab;
 	document.getElementsByClassName("CodeMirror-scroll")[0].focus();
-    }
+}
 
-    function replaceTab(cm, id, move){
+function replaceTab(cm, id, move){
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	var tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
 	var targetTab = selTab + move;
@@ -1269,9 +1261,9 @@
 	    localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id] = targetTab;
 	}
 	setCmDiv(cm, id);
-    }
+}
 
-    function changeRemoveConfirm(){
+function changeRemoveConfirm(){
 	if(ssParam.confirmFlag == 1){
 	    ssParam.rmCancel.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
 	    ssParam.rmCancel.style.color = "rgba(127, 127, 127, 1)";
@@ -1285,9 +1277,9 @@
 	    ssParam.rmDone.style.color = "rgba(127, 127, 127, 1)";
 	    ssParam.confirmFlag = 1;
 	}
-    }
+}
     
-    function switchInnerMode(id){
+function switchInnerMode(id){
 	if(ssParam.resultNode[id].style.display == "none"){
 	    ssParam.resultNode[id].style.display = "block";
 	    var tags = ["input", "button"];
@@ -1329,12 +1321,12 @@
 		ssParam.innerMode[id] = 0;
 	    }
 	}
-    }
+}
 
-    /// command
-    //////////////////////////////////
+/// command
+//////////////////////////////////
     
-    function ssCommand(cm, id, caret, line){
+function ssCommand(cm, id, caret, line){
 	if((line.match(/^#\s*clear_sparql_queries\s*;\s*$/) || line.match(/^#\s*バルス\s*;\s*$/)) && caret.line == 0){ 	// clear all
 	    localStorage.clear();
 	    ssParam.textarea[id].value = "";
@@ -1394,12 +1386,12 @@
 	    if(from){ select = select + "\n" + from; }
 	    return "\n" + select + "\nWHERE {\n  " + code + "\n}\n" + limit;
 	}
-    }
+}
     
-    /// default params
-    //////////////////////////////////
+/// default params
+//////////////////////////////////
 
-    function setDefaultSparqlTerm() {
+function setDefaultSparqlTerm() {
 	return ["AVG ()", "ASK {}", "ABS ()", 
 		"BASE", "BIND ()", "BOUND ()", "BNODE ()", 
 		"COUNT ()", "CONCAT ()", "CONTAINS ()", "CONSTRUCT {}", "COALESCE ()", "CEIL ()",
@@ -1421,13 +1413,13 @@
 		"VALUES",
 		"WHERE {}",
 		"YEAR ()"];
-    }
+}
 
-    function setDefaultPrefix() {
+function setDefaultPrefix() {
 	return ["rdf:", "yago:", "foaf:", "rdfs:", "dbo:", "dbp:", "gr:", "dc:", "spacerel:", "owl:", "skos:", "geo:", "dcat:", "xsd:", "ont:", "xtypes:", "qb:", "sioc:", "onto:", "org:", "sio:", "skos:", "dct:", "dcterms:", "dcterm:", "void:", "obo:", "prov:", "dbpedia:"];
-    }
+}
     
-    function setDefaultUri(){
+function setDefaultUri(){
 	var uri = {"id": "http://identifiers.org/"};
 	ssParam.defaultUri = {};
 	for(var key in ssParam.prefix2Uri){
@@ -1436,9 +1428,9 @@
 	for(var key in uri){
 	    ssParam.defaultUri[key] = uri[key];
 	}
-    }
+}
 
-    async function setPrefixUri(cm, caret, id, prefix, flag) {
+async function setPrefixUri(cm, caret, id, prefix, flag) {
 	var url = "https://prefix.cc/" + prefix + ".file.json";
 	var options = { method: 'GET' };
 	var res = await fetch(url, options).then(res=>res.json());
@@ -1449,19 +1441,16 @@
 	    cm.replaceRange(" <" + uri + ">", Pos(caret.line, caret.ch), Pos(caret.line, caret.ch));
 	    saveCode(cm, id);
 	}
-    }
+}
 
-    function getDomain(path) {
+function getDomain(path) {
 	var domain = "localhost";
 	if(path.match(/^https*\/\/[^\/]+\//)){
 	    domain = path.match(/^(https*\/\/[^\/]+\/)/)[1];
 	}
 	return domain;
-    }
+}
     
-    function unique(a){	
+function unique(a){	
 	return  Array.from(new Set(a));
-    }
-    
-});
-
+}
