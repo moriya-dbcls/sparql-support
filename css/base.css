@@ -1,0 +1,36 @@
+li.query_tab {
+    list-style: none;
+    display: inline-block;
+    width: 50px;
+    margin-right: 2px;
+    text-align: center;
+    color: rgba(255, 255, 255, 1);
+    background-color: rgba(127, 127, 127, 0.5);
+    border-color: rgba(127, 127, 127, 0.5);
+    border-style: solid;
+    border-width: 1px 1px 1px 1px;
+    cursor: default;
+    border-radius: 5px 5px 5px 5px / 5px 5px 5px 5px;
+    font-size: 12px;
+}
+
+span.cm-ss_debug_comment {
+    color: rosybrown;
+}
+
+table#inner_result_table td {
+    font-size: 14px;
+    padding: 0px 10px 0px 10px;
+}
+table#inner_result_table td a{
+    text-decoration: none;
+}
+
+table#inner_result_table th {
+    text-align: left;
+    padding: 0px 10px 0px 10px;
+}
+
+pre#inner_result_table {
+    background-color: transparent;
+}
