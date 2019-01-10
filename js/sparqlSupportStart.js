@@ -5,9 +5,9 @@ var editor = CodeMirror.fromTextArea(document.getElementById(id), {
     matchBrackets: true,
     autoCloseBrackets: true,
     lineNumbers: true,
-    sparqlSupportAutoComp: id,
-    sparqlSupportQueries: id,
-    sparqlSupportInnerMode: id,
+    sparqlSupportAutoComp: true,
+    sparqlSupportQueries: true,
+    sparqlSupportInnerMode: true,
     extraKeys: {"Tab": function(instance) { return false; },
 		"Ctrl-Space": function(instance) { return false; }}
 });

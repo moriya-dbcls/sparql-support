@@ -17,6 +17,7 @@
 
     CodeMirror.defineOption("sparqlSupportAutoComp", false, function(cm, id) {
 	var data = cm.state.selectionPointer;
+	if(id === true) id = "query";
 	if (id) {
 	    data = cm.state.selectionPointer = {
 		value: typeof id == "string" ? id : "default",
@@ -25,13 +26,14 @@
 	    };
 	    CodeMirror.on(cm.getWrapperElement(), "keydown", data.keydown);
 	    CodeMirror.on(cm.getWrapperElement(), "keyup", data.keyup);
-	    
+
 	    initDiv(cm, id);
 	}
     });
 
     CodeMirror.defineOption("sparqlSupportQueries", false, function(cm, id) {
 	var data = cm.state.selectionPointer;
+	if(id === true) id = "query";
 	if (id) {
 	    data = cm.state.selectionPointer = {
 		value: typeof id == "string" ? id : "default",
@@ -49,6 +51,7 @@
     
     CodeMirror.defineOption("sparqlSupportInnerMode", false, function(cm, id) {
 	var data = cm.state.selectionPointer;
+	if(id === true) id = "query";
 	if (id) {
 	    data = cm.state.selectionPointer = {
 		value: typeof id == "string" ? id : "default",
@@ -849,6 +852,8 @@
 	    ssParam.job = {};
 	    ssParam.results = {};
 	}
+       
+       /* old : req. textarea.id
 	ssParam.textarea[id] = document.getElementById(id);
 	var textarea = ssParam.textarea[id];
 	var parentNode = textarea.parentNode;
@@ -861,6 +866,21 @@
 	    }
 	}
 	ssParam.codeMirrorDiv[id] = codeMirrorDiv;
+       */
+       
+       var codeMirrorDiv = cm.display.wrapper;
+       ssParam.codeMirrorDiv[id] = codeMirrorDiv;
+       var parentNode = codeMirrorDiv.parentNode;
+       var childNodes = parentNode.childNodes;
+       var textarea;
+       for(var i = 0; childNodes[i]; i++){
+	   if(childNodes[i].tagName && childNodes[i].tagName.toLowerCase().match("textarea")) {
+	       textarea = childNodes[i];
+	       break;
+	   }
+       }
+       ssParam.textarea[id] = textarea;
+       
 	// parent form
 	for(var i = 0; i < 100; i++){
 	    if(parentNode.tagName.toLowerCase() == "form"){

@@ -74,17 +74,15 @@
 
     var startCodeMirror = function(textarea){
 	if(textarea){
-	    if(textarea.id) idName =  textarea.id;
-            else textarea.id = idName;
 	    var editor = CodeMirror.fromTextArea(textarea, {
 		mode: "application/sparql-query",
 		indentUnit: 2,
 		matchBrackets: true,
 		autoCloseBrackets: true,
 		lineNumbers: true,
-		sparqlSupportAutoComp: idName,  // Auto completion
-		sparqlSupportQueries: idName,
-		sparqlSupportInnerMode: idName,
+		sparqlSupportAutoComp: true,  // Auto completion
+		sparqlSupportQueries: true,
+		sparqlSupportInnerMode: true,
 		extraKeys: {"Tab": function(instance) { return false; },
 			    "Ctrl-Space": function(instance) { return false; }}
 	    });
@@ -127,6 +125,7 @@
 		    break;
 		}
 	    }
+	    if(textarea === false) textarea = textareaNodes[0];
 	}
 	startCodeMirror(textarea);
     }
