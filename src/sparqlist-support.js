@@ -424,7 +424,7 @@ const SPARQListSupport = {
 		return false;
 	    }
 	    try {
-		arg = (!JSON) ? eval("(" + arg + ")") : JSON.parse(arg);
+		arg = JSON.parse(arg);
 		return true;
 	    } catch (e) {
 		return false;
