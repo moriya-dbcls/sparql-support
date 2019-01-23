@@ -1,13 +1,21 @@
 // name:    SPARQL support
-// version: 0.8.5
+// version: 0.8.9
 //
 // Released under the MIT license
 // Copyright (c) 2015 Yuki Moriya (DBCLS)
 // http://opensource.org/licenses/mit-license.php
 
-import CodeMirror from "codemirror/lib/codemirror";
+(function(mod) {
+    if (typeof exports == "object" && typeof module == "object") // CommonJS
+	mod(require("./codemirror/lib/codemirror"));
+    else if (typeof define == "function" && define.amd) // AMD
+	define(["./codemirror/lib/codemirror"], mod);
+    else // Plain browser env
+	mod(CodeMirror);
+})(function(CodeMirror) {
+    "use strict";
 
-CodeMirror.defineOption("sparqlSupportAutoComp", false, function(cm, id) {
+    CodeMirror.defineOption("sparqlSupportAutoComp", false, function(cm, id) {
 	var data = cm.state.selectionPointer;
 	if(id === true) id = "query";
 	if (id) {
@@ -21,9 +29,9 @@ CodeMirror.defineOption("sparqlSupportAutoComp", false, function(cm, id) {
 
 	    initDiv(cm, id);
 	}
-});
+    });
 
-CodeMirror.defineOption("sparqlSupportQueries", false, function(cm, id) {
+    CodeMirror.defineOption("sparqlSupportQueries", false, function(cm, id) {
 	var data = cm.state.selectionPointer;
 	if(id === true) id = "query";
 	if (id) {
@@ -39,9 +47,9 @@ CodeMirror.defineOption("sparqlSupportQueries", false, function(cm, id) {
 
 	    initDivQueries(cm, id);
 	}
-});
+    });
     
-CodeMirror.defineOption("sparqlSupportInnerMode", false, function(cm, id) {
+    CodeMirror.defineOption("sparqlSupportInnerMode", false, function(cm, id) {
 	var data = cm.state.selectionPointer;
 	if(id === true) id = "query";
 	if (id) {
@@ -50,29 +58,31 @@ CodeMirror.defineOption("sparqlSupportInnerMode", false, function(cm, id) {
 		mousedown: function(e) { mouseDownInner(e, id); }
 	    };
 	    document.addEventListener("click", data.mousedown, false);
-	  //  CodeMirror.on(cm.getWrapperElement(), "mousedown", data.mousedown);
+	    //  CodeMirror.on(cm.getWrapperElement(), "mousedown", data.mousedown);
 
 	    initDivInner(cm, id);
 	}
-});
-   
-var Pos = CodeMirror.Pos;
+    });
     
-var ssParam = {
-	version: "0.8.5",
-	preString: ""
-}
+    var Pos = CodeMirror.Pos;
+    
+    var ssParam = {
+	version: "0.8.9",
+	preString: "",
+	mixedContent: 1
+    }
 
-/// event
-//////////////////////////////////
+    /// event
+    //////////////////////////////////
     
-function keyDown(cm, e, id){
+    function keyDown(cm, e, id){
 	var caret = cm.getCursor('anchor');
-	if(ssParam.confirmFlag && !e.ctrlKey && e.keyCode != 16){ ssParam.confirmFlag = 0; ssParam.confirmBox.style.display = "none"; }
+	//	console.log("'" + e.key + "'" + " " + e.code);
+	if(ssParam.confirmFlag && !e.ctrlKey && e.key != 'Shift'){ ssParam.confirmFlag = 0; ssParam.confirmBox.style.display = "none"; }
 	if(e.key == 'Tab' || (e.key == ' ' && e.ctrlKey)){
 	    cm.indentLine(caret.line);
 	    var caret = cm.getCursor('anchor');
-	    var tmp = tabKeyDown(cm, caret, id, e.keyCode);
+	    var tmp = tabKeyDown(cm, caret, id, e.shiftKey);
 	    var string = tmp[0];
 	    var prefixCopy = tmp[1];
 	    if(string != false){
@@ -108,8 +118,8 @@ function keyDown(cm, e, id){
 		    ssParam.textarea[id].form.submit();
 		}
 	    }
-	}else if(e.ctrlKey && parseInt(e.key) >= 0 && parseInt(e.key) <= 9) { // Ctrl+[0-9]: move tab
-	    changeTab(cm, parseInt(e.key), id);
+	}else if(e.ctrlKey && parseInt(e.key) >= 1 && parseInt(e.key) <= 9) { // Ctrl+[1-9]: move tab
+	    changeTab(cm, parseInt(e.key) - 1, id);
 	}else if(e.ctrlKey && e.key == 'Shift') { // Ctrl+Shift(+Alt): move neighbor tab
 	    if(ssParam.confirmFlag){
 		changeRemoveConfirm();
@@ -139,14 +149,14 @@ function keyDown(cm, e, id){
 	}
 	
 	saveCode(cm, id);
-}
+    }
 
-function keyUp(cm, e, id){
+    function keyUp(cm, e, id){
 	chkQueryPrefix(id);
 	saveCode(cm, id);
-}
+    }
     
-function mouseDown(cm, e, id) {
+    function mouseDown(cm, e, id) {
 	ssParam.termFrag = "";
 	ssParam.preString = "";
 	ssParam.confirmFlag = 0;
@@ -177,15 +187,15 @@ function mouseDown(cm, e, id) {
 		}
 	    }
 	}
-}
+    }
 
-function mouseUp(id) {
+    function mouseUp(id) {
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	document.getElementById("query_tab_" + selTab + "_" + id).style.left = "0px";
 	ssParam.dragFlag = false;
-}
+    }
 
-function mouseMove(cm, e, id) {
+    function mouseMove(cm, e, id) {
 	if(ssParam.dragFlag){
 	    var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	    var tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
@@ -202,40 +212,47 @@ function mouseMove(cm, e, id) {
 		}
 	    }
 	}
-}
+    }
 
-function mouseDownInner(e, id) {
+    function mouseDownInner(e, id) {
 	if(e.target.id == "submit_button_" + id && ssParam.innerMode[id]){
 	    var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	    innerModeRunQuery(selTab, id);
 	}else if(e.target.id == "query_tab_inner_" + id){
 	    switchInnerMode(id);
+	}else if(e.target.className == "describe" && e.which == 1){ // left click
+	    var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
+	    var uri = decodeURIComponent(e.target.href);
+	    e.preventDefault();
+	    innerModeRunQuery(selTab, id, uri);
+	}else if(e.target.id == "cm-ss_delete_subres_div"){
+	    ssParam.subResNode[id].style.display = "none";
 	}
-}
+    }
 
-/// div value <-> textarea code --> localStorage
-//////////////////////////////////
+    /// div value <-> textarea code --> localStorage
+    //////////////////////////////////
 
-function saveCode(cm, id){
+    function saveCode(cm, id){
 	var text =  cm.getValue();
 	ssParam.textarea[id].value = text;
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	localStorage[ssParam.pathName + '_sparql_code_' + selTab + "_" + id] = text;
 	if(text.match(/^##+ *endpoint +https*:\/\//)){ ssParam.formNode[id].action = text.match(/^##+ *endpoint +(https*:\/\/[^\s,;]+)/)[1];}
 	else{ssParam.formNode[id].action = ssParam.defaultEndpoint[id];}
-}
+    }
 
-function setCmDiv(cm, id){
+    function setCmDiv(cm, id){
 	var text = ssParam.textarea[id].value;
 	cm.setValue(text);
 	if(text.match(/^##+ *endpoint +https*:\/\//)){ ssParam.formNode[id].action = text.match(/^##+ *endpoint +(https*:\/\/[^\s,;]+)/)[1];}
 	else{ssParam.formNode[id].action = ssParam.defaultEndpoint[id];}
-}
+    }
 
-/// completion
-//////////////////////////////////
+    /// completion
+    //////////////////////////////////
 
-function tabKeyDown(cm, caret, id, keyCode){
+    function tabKeyDown(cm, caret, id, shiftKey){
 	var string;
 	var prefixCopy = false;
 	var line = cm.getLine(caret.line);
@@ -246,7 +263,7 @@ function tabKeyDown(cm, caret, id, keyCode){
 	else if(!ssParam.queryFormer && ssParam.termFrag.match(/^C$/) && caret.line == 0) { string = "COPY" }
 	else if(!ssParam.queryFormer && ssParam.termFrag.match(/^D[Ee][Ff]$/)) { string = "DEFINE sql:select-option \"order\"" }
 	else if(!ssParam.termFrag) return [false, false];
-	else { var tmp = autoCompletion(cm, caret, id); string = tmp[0]; prefixCopy = tmp[1]; }
+	else { var tmp = autoCompletion(cm, caret, id, shiftKey); string = tmp[0]; prefixCopy = tmp[1]; }
 	return [string, prefixCopy];
 
 	function getTermFrag(cm, caret){
@@ -263,7 +280,7 @@ function tabKeyDown(cm, caret, id, keyCode){
 	    ssParam.termFragTmp = "";
 	}
 
-	function autoCompletion(cm, caret, id){
+	function autoCompletion(cm, caret, id, shiftKey){
 	    var string;
 	    var prefixCopy = false;
 	    getWords(1, id);
@@ -275,14 +292,14 @@ function tabKeyDown(cm, caret, id, keyCode){
 	    }else if(ssParam.termFrag.match(/^<\w+>$/)) {
 		string = autoCompletionUri();
 	    }else {
-		string = autoCompletionTerms(id);
+		string = autoCompletionTerms(id, shiftKey);
 	    }
 	    return [string, prefixCopy];
 	}
 
-	function autoCompletionTerms(id){
+	function autoCompletionTerms(id, shiftKey){
 	    var terms = [];
-	    if(ssParam.termFrag.match(/^[A-Z]/)){
+	    if(ssParam.termFrag.match(/^[A-Z]/) || (ssParam.termFrag.match(/^[a-z]/) && shiftKey)){
 		Array.prototype.push.apply(terms, ssParam.defaultSparqlTerm);
 	    }else if(ssParam.termFrag.match(/^\$\w+/) || ssParam.termFrag.match(/^\?\?p/)){
 		Array.prototype.push.apply(terms, ssParam.resultTerms);
@@ -380,24 +397,6 @@ function tabKeyDown(cm, caret, id, keyCode){
 	    }
 	    return string;
 	}
-
-	function uriCheck(spang, j){
-	    var string = spang[j];
-	    if(string.match(/^\'/) && !string.match(/\'$/) && !string.match(/\'\^\^xsd:\w+/) && !string.match(/\'\@\w+/)){
-		for(var i = j + 1; i < spang.length; i++){
-		    string = string + " " + spang[i];
-		    if(spang[i].match(/'$/) || string.match(/\'\^\^xsd:\w+/) || string.match(/\'\@\w+/)) break;
-		}
-	    }else if(string.match(/^\"/) && !string.match(/\"$/) && !string.match(/\"\^\^xsd:\w+/) && !string.match(/\"\@\w+/)){
-		for(var i = j + 1; i < spang.length; i++){
-		    string = string + " " + spang[i];
-		    if(spang[i].match(/"$/) || string.match(/\"\^\^xsd:\w+/) || string.match(/\"\@\w+/)) break;
-		}
-	    }	
-	    if(string.match(/^[\'\"]https*:\/\/.+[\'\"]$/)) string = string.replace(/^[\'\"]/, "").replace(/[\'\"]$/, ""); 
-	    if(string.match(/^https*:\/\//)) string = "<" + string + ">";
-	    return string;
-	}
 	
 	function copyPrefix(cm, id){
 	    var copy = ssParam.queryFormer.toUpperCase();
@@ -446,9 +445,9 @@ function tabKeyDown(cm, caret, id, keyCode){
 	    var freqPrefix = ssParam.freqPrefix;
 	    var variable = [];
 	    var prefix = [];
-//	    var uri = [];
+	    //	    var uri = [];
 	    Array.prototype.push.apply(prefix, ssParam.defaultPrefix);
-//	    Array.prototype.push.apply(uri, ssParam.defaultUri);
+	    //	    Array.prototype.push.apply(uri, ssParam.defaultUri);
 	    var strings = text.replace(/\s+/g, " ").split(" ");
 	    for(var j = 0; j < strings.length; j++){
 		if(strings[j].match(/^\w+:<[^<>]+>$/)){
@@ -484,9 +483,27 @@ function tabKeyDown(cm, caret, id, keyCode){
 	    }));
 	    return terms;
 	}
-}
+    }
 
-function chkQueryPrefix(id){
+    function uriCheck(spang, j){
+	var string = spang[j];
+	if(string.match(/^\'/) && !string.match(/\'$/) && !string.match(/\'\^\^xsd:\w+/) && !string.match(/\'\@\w+/)){
+	    for(var i = j + 1; i < spang.length; i++){
+		string = string + " " + spang[i];
+		if(spang[i].match(/'$/) || string.match(/\'\^\^xsd:\w+/) || string.match(/\'\@\w+/)) break;
+	    }
+	}else if(string.match(/^\"/) && !string.match(/\"$/) && !string.match(/\"\^\^xsd:\w+/) && !string.match(/\"\@\w+/)){
+	    for(var i = j + 1; i < spang.length; i++){
+		string = string + " " + spang[i];
+		if(spang[i].match(/"$/) || string.match(/\"\^\^xsd:\w+/) || string.match(/\"\@\w+/)) break;
+	    }
+	}	
+	if(string.match(/^[\'\"]https*:\/\/.+[\'\"]$/)) string = string.replace(/^[\'\"]/, "").replace(/[\'\"]$/, ""); 
+	if(string.match(/^https*:\/\//)) string = "<" + string + ">";
+	return string;
+    }
+    
+    function chkQueryPrefix(id){
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	var text = localStorage[ssParam.pathName + '_sparql_code_' + selTab + "_" + id];
 	var lines = text.split(/[\n\r]/);
@@ -499,6 +516,7 @@ function chkQueryPrefix(id){
 	}
 	text = text.replace(/#[^\n]+\n/g, "\n");
 	text = text.replace(/\<https*:\/\/[^\>\s]+/g, "\n");
+	text = text.toLowerCase().replace(/^\s*define\s+\w+:.*/g, "\n");
 	var strings = text.replace(/\s+/g, " ").split(" ");
 	for(var i = 0; i < strings.length; i++){
 	    var words = strings[i].split(/[ \(\)\{\}\[\],\/\|\^]+/);
@@ -512,20 +530,20 @@ function chkQueryPrefix(id){
 		}
 	    }
 	}
-	ssParam.resultNode[id].innerHTML = "";
 	if(Object.keys(unknownPrefix).length > 0){
 	    var pre = document.createElement("pre");
 	    pre.id = "inner_result";
 	    pre.style = "margin-left:5px;";
 	    pre.appendChild(document.createTextNode("Undefined prefix: " + Object.keys(unknownPrefix).join(" ")));
+	    ssParam.resultNode[id].innerHTML = "";
 	    ssParam.resultNode[id].appendChild(pre);
 	}
-}
+    }
 
-/// inner mode
-//////////////////////////////////
+    /// inner mode
+    //////////////////////////////////
     
-async function innerModeRunQuery(queryTab, id){
+    async function innerModeRunQuery(queryTab, id, describe){
 	
 	//// loading loop
 	var loadingVis = function(runId, id){
@@ -611,7 +629,7 @@ async function innerModeRunQuery(queryTab, id){
 	}
 
 	//// output result to inner html
-	var outResult = function(res, runId, endpoint){
+	var outResult = function(res, runId, endpoint, describe){
 	    var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	    var endTime = Date.now();
 	    var vars = res["head"]["vars"];
@@ -625,6 +643,14 @@ async function innerModeRunQuery(queryTab, id){
 	    resTime.style.color = "#888888";
 	    resDiv.appendChild(resTime);
 
+	    if(describe){
+		var p = document.createElement("p");
+		p.style.margin = "6px 0px 0px 10px";
+		p.appendChild(document.createTextNode("DESCRIBE <" + describe + ">"));
+		p.style.color = "#888888";
+		p.style.fontWeight = "bold";
+		resDiv.appendChild(p);
+	    }
 	    var resTable = document.createElement("table");
 	    resTable.id = "inner_result_table";
 	    var resTr = document.createElement("tr");
@@ -657,11 +683,17 @@ async function innerModeRunQuery(queryTab, id){
 				    break;
 				}
 			    }
-			    var resA = document.createElement("a");
-			    resA.href = value;
-			    resA.appendChild(document.createTextNode(text));
-			    resTd.appendChild(resA);
-			    ssParam.resultTerms.push(term);
+			    if(describe == value){
+				resTd.appendChild(document.createTextNode(text));
+				resTd.style.color = "#d95270";
+			    }else{
+				var resA = document.createElement("a");
+				resA.href = value;
+				resA.className = "describe";
+				resA.appendChild(document.createTextNode(text));
+				resTd.appendChild(resA);
+				ssParam.resultTerms.push(term);
+			    }
 			}else if(type == "literal"){
 			    resTd.appendChild(document.createTextNode("\"" + value + "\""));
 			    ssParam.resultTerms.push("$" + vars[j] + ":" +  "\"" + value + "\"");
@@ -686,11 +718,24 @@ async function innerModeRunQuery(queryTab, id){
 
 	    var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	    var runTab = ssParam.job[runId];
-	    if(selTab == runTab){
-		ssParam.resultNode[id].innerHTML = "";
-		ssParam.resultNode[id].appendChild(resDiv);
+	    if(!describe){
+		if(selTab == runTab){
+		    ssParam.resultNode[id].innerHTML = "";
+		    ssParam.resultNode[id].appendChild(resDiv);
+		    ssParam.subResNode[id].style.display = "none";
+		}
+		ssParam.results['sparql_res_' + runTab + "_" + id] = resDiv;
+	    }else{
+		if(selTab == runTab){
+		    ssParam.subResNode[id].innerHTML = "";
+		    var deleteButton = document.createElement("div");
+		    ssParam.subResNode[id].appendChild(deleteButton);
+		    deleteButton.innerHTML = "&#x00D7"; // "×"
+		    deleteButton.id = "cm-ss_delete_subres_div";
+		    ssParam.subResNode[id].appendChild(resDiv);
+		    ssParam.subResNode[id].style.display = "block";
+		}
 	    }
-	    ssParam.results['sparql_res_' + runTab + "_" + id] = resDiv;
 	    if(ssParam.color.q == runTab) ssParam.color.q = false;
 	    clearInterval(loadingTimer);
 	    if(document.getElementById("query_tab_" + runTab + "_" + id)){
@@ -750,7 +795,7 @@ async function innerModeRunQuery(queryTab, id){
 	if(lines[0] && lines[0].toLowerCase().match(/^define +sql:select-option +"order"/)){
 	    defineLine = true;
 	}
-	    
+	
 	//// edit construct SPARQL query for multi-line comments
 	if(sparqlQuery.match(/\n\`\`\`sparql/)) sparqlApiMd = true;
 	for(var i = 0; i < lines.length; i++){
@@ -794,6 +839,8 @@ async function innerModeRunQuery(queryTab, id){
 		}
 		if(f == 1) sparqlQuery = sparqlQuery + "\n" + lines[i];
 	    }
+	}else if(describe){
+	    sparqlQuery = "DESCRIBE <" + describe + ">";
 	}
 
 	//// set fetch body
@@ -811,68 +858,64 @@ async function innerModeRunQuery(queryTab, id){
 	    }
 	};
 
+	// relay https://sparql-support.dbcls.jp/api/relay for 'HTTP'-endpoint from 'HTTPS'-SPARQL_spport (for SSL Mixed Content)
+	var original_endpoint = false;
+	if(ssParam.mixedContent == 1 && location.protocol == "https:" && endpoint.match(/^http:/)){
+	    options.body += "&endpoint=" + encodeURIComponent(endpoint);
+	    original_endpoint = endpoint;
+	    endpoint = "https://sparql-support.dbcls.jp/api/relay";
+	}
+
 	//// run fetch
 	try{
 	    var res = await fetch(endpoint, options).then(handleResponse);
-	    // console.log(res);
 	    if(res.error){
 		outError(res, runId);
 	    }else{
-		outResult(res, runId, endpoint);
+		if(original_endpoint) endpoint = original_endpoint;
+		outResult(res, runId, endpoint, describe);
 	    }
 	}catch(error){
 	    console.log(error);
 	    var endTime = Date.now();
-	    var text = "browser error: " +  error.message + "\n\nendpoint error";
+	    var submesse = "endpoint error";
+	    if(location.protocol == "https:" && endpoint.match(/^http:/)) submesse = "SSL Mixed Content Error: When the endpoint is not HTTPS, you should use SPARQL support on HTTP. \nOr, set a option to access endpoints via sparql-support.dbcls.jp (set command: '# mixed_content_relay: true;' -> 'Ctrl+Enter').";
+	    var text = "browser error: " +  error.message + "\n\n" + submesse;
 	    if(endTime - startTime > 30000) text += "\nor endpoint timeout (" + (Math.round((endTime - startTime) / 100) / 10) + " sec.)";
 	    outError({status: "", text: text}, runId);
 	}
-}  
+    }  
 
     
-/// init
-//////////////////////////////////
+    /// init
+    //////////////////////////////////
     
-function initDiv(cm, id){
+    function initDiv(cm, id){
 	// CodeMirror style
 	if(!ssParam.textarea) {
 	    ssParam.textarea = {};
 	    ssParam.codeMirrorDiv = {};
 	    ssParam.resultNode = {};
+	    ssParam.subResNode = {};
 	    ssParam.formNode = {};
 	    ssParam.defaultEndpoint = {};
 	    ssParam.job = {};
 	    ssParam.results = {};
 	}
-       
-       /* old : req. textarea.id
-	ssParam.textarea[id] = document.getElementById(id);
-	var textarea = ssParam.textarea[id];
-	var parentNode = textarea.parentNode;
+	
+	var codeMirrorDiv = cm.display.wrapper;
+	ssParam.codeMirrorDiv[id] = codeMirrorDiv;
+	var parentNode = codeMirrorDiv.parentNode;
 	var childNodes = parentNode.childNodes;
-	var codeMirrorDiv;
+	var textarea;
 	for(var i = 0; childNodes[i]; i++){
-	    if(childNodes[i].className && childNodes[i].className.match("cm-s-default")) {
-		codeMirrorDiv = childNodes[i];
+	    if(childNodes[i].tagName && childNodes[i].tagName.toLowerCase().match("textarea")) {
+		textarea = childNodes[i];
 		break;
 	    }
 	}
-	ssParam.codeMirrorDiv[id] = codeMirrorDiv;
-       */
-       
-       var codeMirrorDiv = cm.display.wrapper;
-       ssParam.codeMirrorDiv[id] = codeMirrorDiv;
-       var parentNode = codeMirrorDiv.parentNode;
-       var childNodes = parentNode.childNodes;
-       var textarea;
-       for(var i = 0; childNodes[i]; i++){
-	   if(childNodes[i].tagName && childNodes[i].tagName.toLowerCase().match("textarea")) {
-	       textarea = childNodes[i];
-	       break;
-	   }
-       }
-       ssParam.textarea[id] = textarea;
-       
+	ssParam.textarea[id] = textarea;
+	
 	// parent form
 	for(var i = 0; i < 100; i++){
 	    if(parentNode.tagName.toLowerCase() == "form"){
@@ -927,19 +970,18 @@ function initDiv(cm, id){
 	codeMirrorDiv.style.borderWidth = borderWidth.join(" ");
 	codeMirrorDiv.style.borderColor = borderColor.join(" ");
 	codeMirrorDiv.style.borderRadius = borderRadius.join(" ");
-	//	codeMirrorDiv.style.padding = padding.join(" ");
 	codeMirrorDiv.style.padding = '0px 0px 0px 0px';
 	codeMirrorDiv.style.margin = margin.join(" ");
-       codeMirrorDiv.style.fontSize = baseStyle.fontSize;
+	codeMirrorDiv.style.fontSize = baseStyle.fontSize;
 	codeMirrorDiv.style.fontFamily = baseStyle.fontFamily;
 	codeMirrorDiv.style.lineHeight = baseStyle.lineHeight;
 	codeMirrorDiv.style.resize = 'both';
-       // for chrome default
-       if(parseInt(baseStyle.fontSize.replace("px", "")) < 16) codeMirrorDiv.style.fontSize = "16px" ;
-       if(baseStyle.fontFamily != "monospace" && baseStyle.fontFamily != "Courier" && baseStyle.fontFamily != "Consolas" && baseStyle.fontFamily != "Monaco") codeMirrorDiv.style.fontFamily = "monospace, Courier, Consolas, Monaco";
+	// for chrome default
+	if(parseInt(baseStyle.fontSize.replace("px", "")) < 16) codeMirrorDiv.style.fontSize = "16px" ;
+	if(baseStyle.fontFamily != "monospace" && baseStyle.fontFamily != "Courier" && baseStyle.fontFamily != "Consolas" && baseStyle.fontFamily != "Monaco") codeMirrorDiv.style.fontFamily = "monospace, Courier, Consolas, Monaco";
 
-        ssParam.pathName = location.pathname;
-       
+	ssParam.pathName = location.pathname;
+	
 	// sparql default
 	ssParam.defaultSparqlTerm = setDefaultSparqlTerm();
 	ssParam.defaultPrefix = setDefaultPrefix();
@@ -979,6 +1021,9 @@ function initDiv(cm, id){
 	    textarea.value = localStorage[ssParam.pathName + '_sparql_code_' + selTab + '_' + id];
 	    setCmDiv(cm, id);
 	}
+	if(localStorage[ssParam.pathName + '_mixed_content_' + id]){
+	    ssParam.mixedContent = localStorage[ssParam.pathName + '_mixed_content_' + id];
+	}
 	ssParam.freqTerm = {};
 	ssParam.freqPrefix = {};
 	ssParam.freqTermPre = [];
@@ -998,28 +1043,25 @@ function initDiv(cm, id){
 	var ulNode = document.createElement("ul");
 	codeMirrorDiv.appendChild(ulNode);
 	ulNode.id = "query_tab_list_" + id;
-	ulNode.style.display = "none";
-	ulNode.style.margin = "0px";
-	ulNode.style.padding = "0px";
-	ulNode.style.lineHeight = "14px";
-	ulNode.style.position = "absolute";
-	ulNode.style.top = "5px";
-	ulNode.style.right = "5px";
-	ulNode.style.zIndex = "2";
-	ulNode.style.display = "inline";
+	ulNode.className = "cm-ss_query_tab_list";
+	
+	var resParent = document.createElement("div");
+	resParent.style.position = "relative";
+	ssParam.textarea[id].parentNode.appendChild(resParent);
 	
 	ssParam.resultNode[id] = document.createElement("div");
-	ssParam.textarea[id].parentNode.appendChild(ssParam.resultNode[id]);
-	ssParam.resultNode[id].style.backgroundColor = "#f8f8f8";
+	resParent.appendChild(ssParam.resultNode[id]);
 	ssParam.resultNode[id].style.width = areaWidth + 'px';
-	ssParam.resultNode[id].style.height = '300px';
-	ssParam.resultNode[id].style.border = "solid 3px #dddddd";
-	ssParam.resultNode[id].style.borderRadius = "10px";
-	ssParam.resultNode[id].style.overflow = "scroll";
-	ssParam.resultNode[id].style.resize = 'both';
-	ssParam.resultNode[id].style.zIndex = '2';
-	ssParam.resultNode[id].style.display = "none";
+	ssParam.resultNode[id].style.display = "none"; 
 	ssParam.resultNode[id].id = "res_div_" + id;
+	ssParam.resultNode[id].className = "cm-ss_result";
+	
+	ssParam.subResNode[id] = document.createElement("div");
+	resParent.appendChild(ssParam.subResNode[id]);
+	ssParam.subResNode[id].style.width = areaWidth + 'px';
+	ssParam.subResNode[id].style.display = "none";
+	ssParam.subResNode[id].id = "subres_div_" + id;
+	ssParam.subResNode[id].className = "cm-ss_result cm-ss_subres";
 	
 	var confirm = document.createElement("ul");
 	ssParam.confirmBox = confirm;
@@ -1030,13 +1072,13 @@ function initDiv(cm, id){
 	confirm.style.right = "5px";
 	confirm.style.zIndex = '2';
 	codeMirrorDiv.appendChild(confirm);
-
+	
 	// userAgent
 	ssParam.userAgent = navigator.userAgent.toLowerCase();
 	if(ssParam.userAgent.match("applewebkit")) ssParam.userAgent = 'webkit';
 	else if(ssParam.userAgent.match("firefox")) ssParam.userAgent = 'firefox';
 	else if(ssParam.userAgent.match("trident")) ssParam.userAgent = 'ie';
-
+	
 	if(ssParam.userAgent == "webkit"){  // for edit-area resize in webkit
 	    var cmS = document.getElementsByClassName("CodeMirror-scroll");
 	    for(var i = 0; i < cmS.length; i++){
@@ -1045,9 +1087,9 @@ function initDiv(cm, id){
 	}
 	
 	saveCode(cm, id);
-}
+    }
 
-function initDivQueries(cm, id){
+    function initDivQueries(cm, id){
 	var codeMirrorDiv = ssParam.codeMirrorDiv[id];
 	var ulNode = document.getElementById("query_tab_list_" + id);
 	if(!ssParam.results) ssParam.results = {};
@@ -1105,9 +1147,9 @@ function initDivQueries(cm, id){
 	ssParam.confirmBox.appendChild(remove);
 	
 	saveCode(cm, id);
-}
+    }
 
-function initDivInner(cm, id){
+    function initDivInner(cm, id){
 	var codeMirrorDiv = ssParam.codeMirrorDiv[id];
 	var ulNode = document.getElementById("query_tab_list_" + id);
 	var liNode = document.createElement("li");
@@ -1129,12 +1171,12 @@ function initDivInner(cm, id){
 	}
 	
 	ssParam.color = { "f": 1, "n": 63, "q": false};
-}
+    }
     
-/// tabbed  mode
-//////////////////////////////////
+    /// tabbed  mode
+    //////////////////////////////////
 
-function addTab(cm, id){
+    function addTab(cm, id){
 	var tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]) + 1;
 	var liNode = document.createElement("li");
 	var plusNode = document.getElementById("query_tab_list_" + id).childNodes[tabNum];
@@ -1147,9 +1189,9 @@ function addTab(cm, id){
 	ssParam.results['sparql_res_' + tabNum + "_" + id] = "";
 	changeTab(cm, tabNum, id);
 	localStorage[ssParam.pathName + '_sparql_code_tab_' + tabNum + "_" + id] = "";
-}
+    }
 
-function removeTab(cm, id){
+    function removeTab(cm, id){
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	if(localStorage[ssParam.pathName + '_sparql_code_' + selTab + "_" + id]){
 	    changeRemoveConfirm();
@@ -1157,9 +1199,9 @@ function removeTab(cm, id){
 	}else{
 	    removeTabRun(cm, id);
 	}
-}
+    }
     
-function removeTabRun(cm, id){
+    function removeTabRun(cm, id){
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	var tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
 	for(var i = selTab; i < tabNum; i++){
@@ -1191,14 +1233,17 @@ function removeTabRun(cm, id){
 	    ssParam.resultNode[id].appendChild(resTable);
 	}
 	setCmDiv(cm, id);
-}
+    }
 
-function changeTab(cm, newTab, id){
+    function changeTab(cm, newTab, id){
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
+	var tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
+	if(selTab == newTab || newTab > tabNum) return 0;
 	if(localStorage[ssParam.pathName + '_sparql_code_' + newTab + "_" + id]) ssParam.textarea[id].value = localStorage[ssParam.pathName + '_sparql_code_' + newTab + "_" + id];
 	else ssParam.textarea[id].value = "";
 
 	ssParam.resultNode[id].innerHTML = "";
+	ssParam.subResNode[id].style.display = "none";
 	if(ssParam.results['sparql_res_' + newTab + "_" + id]){
 	    var resTable = ssParam.results['sparql_res_' + newTab + "_" + id];
 	    ssParam.resultNode[id].appendChild(resTable);
@@ -1224,9 +1269,9 @@ function changeTab(cm, newTab, id){
 	document.getElementById("query_tab_" + selTab + "_" + id).style.cursor = "default";
 	localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id] = newTab;
 	document.getElementsByClassName("CodeMirror-scroll")[0].focus();
-}
+    }
 
-function replaceTab(cm, id, move){
+    function replaceTab(cm, id, move){
 	var selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	var tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
 	var targetTab = selTab + move;
@@ -1261,9 +1306,9 @@ function replaceTab(cm, id, move){
 	    localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id] = targetTab;
 	}
 	setCmDiv(cm, id);
-}
+    }
 
-function changeRemoveConfirm(){
+    function changeRemoveConfirm(){
 	if(ssParam.confirmFlag == 1){
 	    ssParam.rmCancel.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
 	    ssParam.rmCancel.style.color = "rgba(127, 127, 127, 1)";
@@ -1277,9 +1322,9 @@ function changeRemoveConfirm(){
 	    ssParam.rmDone.style.color = "rgba(127, 127, 127, 1)";
 	    ssParam.confirmFlag = 1;
 	}
-}
+    }
     
-function switchInnerMode(id){
+    function switchInnerMode(id){
 	if(ssParam.resultNode[id].style.display == "none"){
 	    ssParam.resultNode[id].style.display = "block";
 	    var tags = ["input", "button"];
@@ -1321,12 +1366,12 @@ function switchInnerMode(id){
 		ssParam.innerMode[id] = 0;
 	    }
 	}
-}
+    }
 
-/// command
-//////////////////////////////////
+    /// command
+    //////////////////////////////////
     
-function ssCommand(cm, id, caret, line){
+    function ssCommand(cm, id, caret, line){
 	if((line.match(/^#\s*clear_sparql_queries\s*;\s*$/) || line.match(/^#\s*バルス\s*;\s*$/)) && caret.line == 0){ 	// clear all
 	    localStorage.clear();
 	    ssParam.textarea[id].value = "";
@@ -1355,6 +1400,15 @@ function ssCommand(cm, id, caret, line){
 	    caret = cm.getCursor('anchor');
 	    var end = cm.lineCount();
 	    cm.replaceRange(string, Pos(caret.line, caret.ch), Pos(end, 0));
+	}else if(line.match(/^#\s*mixed_content_relay\s*:\s*.+\s*;$/)){
+	    var f = line.match(/^#\s*mixed_content_relay\s*:\s*(.+)\s*;\s*$/)[1];
+	    if(f == "true"){
+		ssParam.mixedContent = 1;
+		localStorage[ssParam.pathName + '_mixed_content_' + id] = 1;
+	    }else if(f == "false"){
+		ssParam.mixedContent = 0;
+		localStorage[ssParam.pathName + '_mixed_content_' + id] = 0;
+	    }
 	}
 
 	function autoCompletionSpang(spangLine){
@@ -1386,12 +1440,12 @@ function ssCommand(cm, id, caret, line){
 	    if(from){ select = select + "\n" + from; }
 	    return "\n" + select + "\nWHERE {\n  " + code + "\n}\n" + limit;
 	}
-}
+    }
     
-/// default params
-//////////////////////////////////
+    /// default params
+    //////////////////////////////////
 
-function setDefaultSparqlTerm() {
+    function setDefaultSparqlTerm() {
 	return ["AVG ()", "ASK {}", "ABS ()", 
 		"BASE", "BIND ()", "BOUND ()", "BNODE ()", 
 		"COUNT ()", "CONCAT ()", "CONTAINS ()", "CONSTRUCT {}", "COALESCE ()", "CEIL ()",
@@ -1413,13 +1467,13 @@ function setDefaultSparqlTerm() {
 		"VALUES",
 		"WHERE {}",
 		"YEAR ()"];
-}
+    }
 
-function setDefaultPrefix() {
+    function setDefaultPrefix() {
 	return ["rdf:", "yago:", "foaf:", "rdfs:", "dbo:", "dbp:", "gr:", "dc:", "spacerel:", "owl:", "skos:", "geo:", "dcat:", "xsd:", "ont:", "xtypes:", "qb:", "sioc:", "onto:", "org:", "sio:", "skos:", "dct:", "dcterms:", "dcterm:", "void:", "obo:", "prov:", "dbpedia:"];
-}
+    }
     
-function setDefaultUri(){
+    function setDefaultUri(){
 	var uri = {"id": "http://identifiers.org/"};
 	ssParam.defaultUri = {};
 	for(var key in ssParam.prefix2Uri){
@@ -1428,9 +1482,9 @@ function setDefaultUri(){
 	for(var key in uri){
 	    ssParam.defaultUri[key] = uri[key];
 	}
-}
+    }
 
-async function setPrefixUri(cm, caret, id, prefix, flag) {
+    async function setPrefixUri(cm, caret, id, prefix, flag) {
 	var url = "https://prefix.cc/" + prefix + ".file.json";
 	var options = { method: 'GET' };
 	var res = await fetch(url, options).then(res=>res.json());
@@ -1441,16 +1495,19 @@ async function setPrefixUri(cm, caret, id, prefix, flag) {
 	    cm.replaceRange(" <" + uri + ">", Pos(caret.line, caret.ch), Pos(caret.line, caret.ch));
 	    saveCode(cm, id);
 	}
-}
+    }
 
-function getDomain(path) {
+    function getDomain(path) {
 	var domain = "localhost";
 	if(path.match(/^https*\/\/[^\/]+\//)){
 	    domain = path.match(/^(https*\/\/[^\/]+\/)/)[1];
 	}
 	return domain;
-}
+    }
     
-function unique(a){	
+    function unique(a){	
 	return  Array.from(new Set(a));
-}
+    }
+    
+});
+

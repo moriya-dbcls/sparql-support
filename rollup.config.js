@@ -1,9 +1,6 @@
 export default Object.entries({
   'sparql-support.js': null,
-  'sparql.js': null,
-  'sparqlSupport.user.js': null,
-  'sparqlSupportStart.js': null,
-  'sparqlist-support.js': 'SPARQListSupport'
+  'sparql.js': null
 }).map(([filename, moduleName]) => ({
   input: `src/${filename}`,
   output: {

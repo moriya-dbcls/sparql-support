@@ -1,3 +1,15 @@
+ul.cm-ss_query_tab_list {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    display: none;
+    margin: 0px;
+    padding: 0px;
+    line-height: 14px;
+    z-index: 2;
+    display: inline;
+}
+
 li.query_tab {
     list-style: none;
     display: inline-block;
@@ -12,6 +24,23 @@ li.query_tab {
     cursor: default;
     border-radius: 5px 5px 5px 5px / 5px 5px 5px 5px;
     font-size: 12px;
+}
+
+div.cm-ss_result {
+    background-color: #f8f8f8;
+    height: 300px;
+    border: solid 3px #dddddd;
+    border-radius: 5px;
+    overflow: scroll;
+    resize: both;
+    z-index: 2;
+}
+
+div.cm-ss_subres {
+    background-color: #f0f0f0;
+    position: absolute;
+    top: 15px;
+    left: 15px;
 }
 
 span.cm-ss_debug_comment {
@@ -33,4 +62,19 @@ table#inner_result_table th {
 
 pre#inner_result_table {
     background-color: transparent;
+}
+
+div#cm-ss_delete_subres_div {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+    font-size: 12px;
+    text-align: center;
+    cursor: default;
+    border: solid 1px #888888;
+    border-radius: 5px 5px 5px 5px / 5px 5px 5px 5px;
+    background-color: #ffffff;
 }
