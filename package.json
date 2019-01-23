@@ -2,7 +2,12 @@
   "name": "sparql-support",
   "version": "1.0.0",
   "description": "SPARQL support is the addon of the CodeMirror to support editing SPARQL queries in a textarea.",
+  "author": "Yuki Moriya (DBCLS)",
+  "license": "MIT",
   "repository": "https://github.com/moriya-dbcls/sparql-support.git",
+  "engines": {
+    "node": ">= 10.0"
+  },
   "main": "js/sparql-support.js",
   "browser": "js/sparql-support.js",
   "jsnext:main": "src/sparql-support.js",
@@ -10,8 +15,6 @@
     "build": "rollup -c",
     "prepublish": "npm run build"
   },
-  "author": "Yuki Moriya (DBCLS)",
-  "license": "MIT",
   "devDependencies": {
     "rollup": "^1.1.0"
   },
