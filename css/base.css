@@ -1,8 +1,7 @@
 ul.cm-ss_query_tab_list {
     position: absolute;
     top: 5px;
-    right: 5px;
-    display: none;
+    right: 10px;
     margin: 0px;
     padding: 0px;
     line-height: 14px;
@@ -10,7 +9,15 @@ ul.cm-ss_query_tab_list {
     display: inline;
 }
 
+ul.cm-ss_query_tab_confirm {
+    position: absolute;
+    top: 15px;
+    right: 5px;
+    z-index: 2;
+}
+
 li.query_tab {
+    position: relative;
     list-style: none;
     display: inline-block;
     width: 50px;
@@ -24,6 +31,10 @@ li.query_tab {
     cursor: default;
     border-radius: 5px 5px 5px 5px / 5px 5px 5px 5px;
     font-size: 12px;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
 }
 
 div.cm-ss_result {
@@ -47,12 +58,22 @@ span.cm-ss_debug_comment {
     color: rosybrown;
 }
 
+div#inner_mode_div {
+    position: relative;
+}
+
+div#inner_result {
+    margin-left: 5px;
+}
+
 table#inner_result_table td {
     font-size: 14px;
     padding: 0px 10px 0px 10px;
 }
+
 table#inner_result_table td a{
     text-decoration: none;
+    color: #4886ad;
 }
 
 table#inner_result_table th {
@@ -64,10 +85,35 @@ pre#inner_result_table {
     background-color: transparent;
 }
 
-div#cm-ss_delete_subres_div {
+td.inner_result_selected_td {
+    color: #d95270;
+}
+
+p.inner_result_time {
+    margin: 0px 0px 0px 10px;
+    font-size: 12px;
+    color: #888888;
+}
+
+p.inner_result_sub_title {
+    margin: 6px 0px 0px 10px;
+    color: #888888;
+    font-weight: bold;
+}
+
+ul.cm-ss_subres_button {
     position: absolute;
-    top: 10px;
+    top: 5px;
     right: 10px;
+    margin: 0px;
+    padding: 0px;
+}
+
+li.cm-ss_subres_li {
+    position: relative;
+    list-style: none;
+    display: inline-block;
+    margin-right: 2px;
     width: 14px;
     height: 14px;
     line-height: 14px;
@@ -76,5 +122,13 @@ div#cm-ss_delete_subres_div {
     cursor: default;
     border: solid 1px #888888;
     border-radius: 5px 5px 5px 5px / 5px 5px 5px 5px;
+}
+li.cm-ss_subres_li_valid {
+    color: #888888;
     background-color: #ffffff;
+}
+
+li.cm-ss_subres_li_invalid {
+    color: #ffffff;
+    background-color: #c0c0c0;
 }
