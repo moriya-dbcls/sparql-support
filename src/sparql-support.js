@@ -183,7 +183,7 @@ function mouseUp(cm, id) {
     let selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
     document.getElementById("query_tab_" + selTab + "_" + id).style.left = "0px";
     ssParam.dragFlag = false;
-    cm.focus();
+    //cm.focus();
 }
 
 function mouseMove(cm, e, id) {
