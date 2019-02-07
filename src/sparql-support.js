@@ -1054,7 +1054,7 @@ function initDiv(cm, id){
 
     let resParent = document.createElement("div");
     resParent.id = "inner_mode_div";
-    ssParam.textarea[id].parentNode.appendChild(resParent);
+    ssParam.formNode[id].appendChild(resParent);
 
     ssParam.resultNode[id] = document.createElement("div");
     resParent.appendChild(ssParam.resultNode[id]);
