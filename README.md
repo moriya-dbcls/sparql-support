@@ -14,9 +14,7 @@ $ npm install
 ## Release
 
 ```
-$ ./replace-version 1.2.3
-$ git commit -a
-$ git tag -a v1.2.3
+$ npm version patch # or minor, major
 $ git push --follow-tags
 $ npm publish
 ```
