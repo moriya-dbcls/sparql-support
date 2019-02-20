@@ -10,3 +10,11 @@ SPARQL support is an addon of the CodeMirror to support editing SPARQL queries i
 ```
 $ npm install
 ```
+
+## Release
+
+```
+$ npm version patch # or minor, major
+$ git push --follow-tags
+$ npm publish
+```
