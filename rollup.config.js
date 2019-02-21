@@ -2,15 +2,14 @@ import replace from 'rollup-plugin-replace';
 
 const {version} = require('./package');
 
-export default Object.entries({
-  'sparql-support.js': null,
-  'sparql.js': null
-}).map(([filename, moduleName]) => ({
+export default [
+  'sparql-support.js',
+  'sparql.js',
+].map((filename) => ({
   input: `src/${filename}`,
   output: {
     file: `js/${filename}`,
-    format: 'umd',
-    name: moduleName,
+    format: 'iife',
     globals: {
       'codemirror/lib/codemirror': 'CodeMirror'
     }
