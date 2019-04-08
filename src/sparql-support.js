@@ -784,7 +784,6 @@ async function innerModeRunQuery(queryTab, id, describe){
 
     //// get endpoint
     let endpoint = ssParam.formNode[id].action;
-    if(document.title == "sparql-proxy") endpoint += "sparql"; // for sparql-proxy
     let endpointLine = false;
     let defineLine = false;
     if(lines[0].toLowerCase().match(/^define +sql:select-option +"order"/) && lines[1].match(/^\s*#+.* *http/)){ // replace DEFINE-line to endpoint-line
