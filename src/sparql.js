@@ -26,10 +26,18 @@ CodeMirror.defineMode("sparql", function(config) {
                              "data", "copy", "to", "move", "add", "create", "drop", "clear", "load"]);
   var operatorChars = /[*+\-<>&|\^\/!\?]/;
 
+ 
+  var sparql_doc = 0;
+    
   function tokenBase(stream, state) {
     var ch = stream.next();
     curPunc = null;
-    if (ch == "$" || ch == "?") {
+    if (sparql_doc == 2){
+      sparql_doc = 0;
+      stream.skipToEnd();
+      return "comment";
+    } 
+    else if (ch == "$" || ch == "?") {
       if(ch == "?" && stream.match(/\s/, false)){
         return "operator";
       }
@@ -38,7 +46,6 @@ CodeMirror.defineMode("sparql", function(config) {
     }
     else if (ch == "<" && !stream.match(/^[\s\u00a0=]/, false)) {
       stream.match(/^[^\s\u00a0>]*>?/);
-//	return "atom";
 	return "tag";
     }
     else if (ch == "\"" || ch == "'") {
@@ -50,8 +57,20 @@ CodeMirror.defineMode("sparql", function(config) {
       return "bracket";
     }
     else if (ch == "#") {
-      stream.skipToEnd();
-      return "comment";
+      if (stream.string.match(/^# +@\w/)) {
+        stream.eatWhile(/[#\s+]/);
+	sparql_doc = 1;
+	  return "comment";
+      }
+      else if (stream.string.toLowerCase().match(/^##+ *endpoint/)) {
+	stream.eatWhile(/[#\s+]/);
+	sparql_doc = 1;
+	return "comment";
+      }
+      else {
+        stream.skipToEnd();
+	return "comment";
+      }
     }
     else if (operatorChars.test(ch)) {
       stream.eatWhile(operatorChars);
@@ -59,10 +78,13 @@ CodeMirror.defineMode("sparql", function(config) {
     }
     else if (ch == ":") {
       stream.eatWhile(/[\w\d\._\-]/);
-//	return "atom";
 	return "string-2";
     }
     else if (ch == "@") {
+      if(sparql_doc == 1) {
+	if(stream.string.substr(stream.start).match(/ [^\s]/)) sparql_doc = 2;
+	else sparql_doc = 0;
+      }
       stream.eatWhile(/[a-z\d\-]/i);
       return "meta";
     }
@@ -77,7 +99,6 @@ CodeMirror.defineMode("sparql", function(config) {
       stream.eatWhile(/[_\w\d]/);
       if (stream.eat(":")) {
         stream.eatWhile(/[\w\d\._\-]/);
-//          return "atom";
 	  return "string-2";
       }
       var word = stream.current();
@@ -87,8 +108,14 @@ CodeMirror.defineMode("sparql", function(config) {
         return "builtin";
       else if (keywords.test(word))
         return "keyword";
-      else
-        return "variable";
+      else {
+	if(sparql_doc == 1) {
+          sparql_doc = 2;
+	  return "meta";  
+        }
+	else
+          return "variable";
+      }
     }
   }
 

@@ -1,5 +1,5 @@
 /* name:    SPARQL support
-// version: __VERSION__
+// version: 0.9.2
 //
 // Released under the MIT license
 // Copyright (c) 2015 Yuki Moriya (DBCLS)
@@ -63,7 +63,7 @@ CodeMirror.defineOption("sparqlSupportInnerMode", false, function(cm, id) {
 let Pos = CodeMirror.Pos;
 
 let ssParam = {
-    version: "__VERSION__",
+    version: "0.9.2",
     preString: "",
     mixedContent: 1,
     ctrlEnterSubmitFlag: true
@@ -248,17 +248,29 @@ function saveCode(cm, id){
     ssParam.textarea[id].value = text;
     let selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
     localStorage[ssParam.pathName + '_sparql_code_' + selTab + "_" + id] = text;
-    if(text.match(/^##+ *endpoint +https*:\/\//)){ ssParam.formNode[id].action = text.match(/^##+ *endpoint +(https*:\/\/[^\s,;]+)/)[1];}
-    else{ssParam.formNode[id].action = ssParam.defaultEndpoint[id];}
+    setFormAction(text);
 }
 
 function setCmDiv(cm, id){
     let text = ssParam.textarea[id].value;
-    cm.replaceRange(text, Pos(0, 0), Pos(cm.lineCount(), 0));
+    //cm.replaceRange(text, Pos(0, 0), Pos(cm.lineCount(), 0));
+    cm.setValue(text);
     cm.focus();
-    //cm.setValue(text);
-    if(text.match(/^##+ *endpoint +https*:\/\//)){ ssParam.formNode[id].action = text.match(/^##+ *endpoint +(https*:\/\/[^\s,;]+)/)[1];}
-    else{ssParam.formNode[id].action = ssParam.defaultEndpoint[id];}
+    setFormAction(text);
+}
+
+function setFormAction(text){
+    let lines = text.split(/\n/);
+    if(lines[0].toLowerCase().match(/^##+ *endpoint +https*:\/\//)){
+	ssParam.formNode[id].action = lines[0].match(/^##+.* +(https*:\/\/[^\s,;]+)/)[1];
+    }else{
+	ssParam.formNode[id].action = ssParam.defaultEndpoint[id];
+    }
+    for(let i = 0; i < lines.length; i++){
+	if(lines[i].toLowerCase().match(/^# +@endpoint +https*:\/\//)) {
+	    ssParam.formNode[id].action = lines[i].match(/^# +@.+ +(https*:\/\/[^\s,;]+)/)[1];
+	}
+    }
 }
 
 /// completion
@@ -823,6 +835,31 @@ async function innerModeRunQuery(queryTab, id, describe){
 	}
     }
 
+    //// edit SPARQL query for sparql-doc format
+    let sparqlDoc = false;
+    let sparqlDocParams = [];
+    lines = sparqlQuery.split("\n");
+    for(let i = 0; i < lines.length; i++){
+	if(lines[i].match(/^# +@param +.+/)){
+	    let param_line = lines[i].match(/^# +@param +(\w+)\s*=\s*(.+)/);
+	    let key = param_line[1];
+	    let value = param_line[2];
+	    if(param_line[2].match(/^\'/)) value = param_line[2].match(/^\'([^\']+)\'/)[1];
+	    else if(param_line[2].match(/^\"/)) value = param_line[2].match(/^\"([^\"]+)\"/)[1];
+	    else value = param_line[2].match(/^([^\s]+)/)[1];
+	    sparqlDocParams[key] = value;
+	}
+    }
+    for(let i = 0; i < lines.length; i++){
+	while(lines[i].match(/\{\{\w+\}\}/)){
+            if(lines[i].match(/\{\{\w+\}\}/)){
+                var words = lines[i].match(/(.*)\{\{(\w+)\}\}(.*)/);
+		if(sparqlDocParams[words[2]]) lines[i] = words[1] + sparqlDocParams[words[2]] + words[3];
+	    }
+        }
+    }
+    sparqlQuery = lines.join("\n");
+    
     //// edit SPARQL query for predicate search
     if(sparqlApiMd || searchPredicate || multiLineComment){
 	sparqlQuery = "";
