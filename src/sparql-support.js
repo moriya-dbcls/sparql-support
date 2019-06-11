@@ -248,7 +248,7 @@ function saveCode(cm, id){
     ssParam.textarea[id].value = text;
     let selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
     localStorage[ssParam.pathName + '_sparql_code_' + selTab + "_" + id] = text;
-    setFormAction(text);
+    setFormAction(text, id);
 }
 
 function setCmDiv(cm, id){
@@ -256,10 +256,10 @@ function setCmDiv(cm, id){
     //cm.replaceRange(text, Pos(0, 0), Pos(cm.lineCount(), 0));
     cm.setValue(text);
     cm.focus();
-    setFormAction(text);
+    setFormAction(text, id);
 }
 
-function setFormAction(text){
+function setFormAction(text, id){
     let lines = text.split(/\n/);
     if(lines[0].toLowerCase().match(/^##+ *endpoint +https*:\/\//)){
 	ssParam.formNode[id].action = lines[0].match(/^##+.* +(https*:\/\/[^\s,;]+)/)[1];
