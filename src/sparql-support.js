@@ -1,5 +1,5 @@
 /* name:    SPARQL support
-// version: 0.9.2
+// version: __VERSION__
 //
 // Released under the MIT license
 // Copyright (c) 2015 Yuki Moriya (DBCLS)
@@ -63,7 +63,7 @@ CodeMirror.defineOption("sparqlSupportInnerMode", false, function(cm, id) {
 let Pos = CodeMirror.Pos;
 
 let ssParam = {
-    version: "0.9.2",
+    version: "__VERSION__",
     preString: "",
     mixedContent: 1,
     ctrlEnterSubmitFlag: true
