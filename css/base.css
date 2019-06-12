@@ -58,6 +58,10 @@ span.cm-ss_debug_comment {
     color: rosybrown;
 }
 
+span.cm-ss_sparql-doc_param {
+    color: lightslategray;
+}
+
 div#inner_mode_div {
     position: relative;
 }
