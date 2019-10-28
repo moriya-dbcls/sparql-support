@@ -66,6 +66,8 @@ let ssParam = {
     version: "__VERSION__",
     preString: "",
     mixedContent: 1,
+    prefixList: "",
+    prefixListUrl: [],
     ctrlEnterSubmitFlag: true
 }
 
@@ -109,7 +111,7 @@ function keyDown(cm, e, id){
 	    ssParam.confirmFlag = 0;
 	    ssParam.confirmBox.style.display = "none";
 	}else if(ssParam.ctrlEnterSubmitFlag == true){
-	    if( ssParam.innerMode[id]){
+	    if(ssParam.innerMode[id]){
 		innerModeRunQuery(selTab, id);
 	    }else{
 		ssParam.textarea[id].form.submit();
@@ -169,6 +171,8 @@ function mouseDown(cm, e, id) {
 	    }
 	}else if(e.target.id == "query_tab_inner_" + id){
 	    //	innerMode(id);
+	}else if(e.target.id == "query_tab_help_" + id){
+	    // help button click
 	}else if(e.target.id != "query_tab_cancel_" + id){
 	    let selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	    if(parseInt(e.target.innerHTML) - 1 != selTab) changeTab(cm, parseInt(e.target.innerHTML) - 1, id);
@@ -248,7 +252,7 @@ function saveCode(cm, id){
     ssParam.textarea[id].value = text;
     let selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
     localStorage[ssParam.pathName + '_sparql_code_' + selTab + "_" + id] = text;
-    setFormAction(text, id);
+    setFormAction(cm, id, text);
 }
 
 function setCmDiv(cm, id){
@@ -256,21 +260,7 @@ function setCmDiv(cm, id){
     //cm.replaceRange(text, Pos(0, 0), Pos(cm.lineCount(), 0));
     cm.setValue(text);
     cm.focus();
-    setFormAction(text, id);
-}
-
-function setFormAction(text, id){
-    let lines = text.split(/\n/);
-    if(lines[0].toLowerCase().match(/^##+ *endpoint +https*:\/\//)){
-	ssParam.formNode[id].action = lines[0].match(/^##+.* +(https*:\/\/[^\s,;]+)/)[1];
-    }else{
-	ssParam.formNode[id].action = ssParam.defaultEndpoint[id];
-    }
-    for(let i = 0; i < lines.length; i++){
-	if(lines[i].toLowerCase().match(/^# +@endpoint +https*:\/\//)) {
-	    ssParam.formNode[id].action = lines[i].match(/^# +@.+ +(https*:\/\/[^\s,;]+)/)[1];
-	}
-    }
+    setFormAction(cm, id, text);
 }
 
 /// completion
@@ -325,7 +315,7 @@ function tabKeyDown(cm, caret, id, shiftKey){
 	let terms = [];
 	if(ssParam.termFrag.match(/^[A-Z]/) || (ssParam.termFrag.match(/^[a-z]/) && shiftKey)){
 	    Array.prototype.push.apply(terms, ssParam.defaultSparqlTerm);
-	}else if(ssParam.termFrag.match(/^\$\w+/) || ssParam.termFrag.match(/^\?\?p/)){
+	}else if(ssParam.termFrag.match(/^\$\w+/) || ssParam.termFrag.match(/^\?\?/)){
 	    Array.prototype.push.apply(terms, ssParam.resultTerms);
 	}else{
 	    Array.prototype.push.apply(terms, getWords(1, id));
@@ -364,7 +354,7 @@ function tabKeyDown(cm, caret, id, shiftKey){
 	if(ssParam.termFragTmp){
 	    let setTerm = ssParam.termFragTmp;
 	    if(ssParam.termFrag.match(/^\$\w+$/)) setTerm = setTerm.replace(/^\$\w+:/, "");
-	    if(ssParam.termFrag.match(/^\?\?p$/)) setTerm = setTerm.replace(/^\?\?p:/, "");
+	    if(ssParam.termFrag.match(/^\?\?$/)) setTerm = setTerm.replace(/^\?\?:/, "");
 	    return setTerm;
 	}else{
 	    return false;
@@ -481,7 +471,7 @@ function tabKeyDown(cm, caret, id, shiftKey){
 		let words = strings[j].split(/[ \(\)\{\}\[\],\/\|\^]+/);
 		for(let i = 0; i < words.length; i++){
 		    words[i] = words[i].replace(/^\^/, "").replace(/[\.\+\*]$/, "");
-		    if(words[i].match(/^\?/)){
+		    if(words[i].match(/^\?\w/)){
 			variable.push(words[i]);
 		    }else if(words[i].match(/^https*:/)){
 			continue;
@@ -529,7 +519,7 @@ function uriCheck(spang, j){
 
 function chkQueryPrefix(id){
     let selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
-    let text = localStorage[ssParam.pathName + '_sparql_code_' + selTab + "_" + id];
+    let text = ssParam.prefixList + localStorage[ssParam.pathName + '_sparql_code_' + selTab + "_" + id];
     let lines = text.split(/[\n\r]/);
     let queryPrefix = [];
     let unknownPrefix = [];
@@ -561,6 +551,9 @@ function chkQueryPrefix(id){
 	pre.appendChild(document.createTextNode("Undefined prefix: " + Object.keys(unknownPrefix).join(" ")));
 	ssParam.resultNode[id].innerHTML = "";
 	ssParam.resultNode[id].appendChild(pre);
+    }else if(ssParam.resultNode[id].getElementsByTagName("pre")[0]
+	     && ssParam.resultNode[id].getElementsByTagName("pre")[0].innerHTML.match(/Undefined prefix:/)){
+	ssParam.resultNode[id].innerHTML = "";
     }
 }
 
@@ -678,7 +671,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 	    let regex = new RegExp("\\s\\$" + vars[i] + "\\s");
 	    resTh = document.createElement("th");
 	    let tmp = vars[i];
-	    if(searchPredicate && vars[i] == "__p__") tmp= "??p";
+	    if(searchPredicate && vars[i] == "__p__") tmp= "??";
 	    resTh.appendChild(document.createTextNode(tmp));
 	    resTr.appendChild(resTh);
 	}
@@ -693,7 +686,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 		    if(type == "uri"){
 			let text = value;
 			let tmp = "$" + vars[j];
-			if(searchPredicate && vars[j] == "__p__") tmp = "??p";
+			if(searchPredicate && vars[j] == "__p__") tmp = "??";
 			let term = tmp + ":<" + value + ">";
 			for(let key in uri2prefix){
 			    if(uri2prefix.hasOwnProperty(key) && value.match(key)){
@@ -785,6 +778,7 @@ async function innerModeRunQuery(queryTab, id, describe){
     let loadingTimer = setInterval(function(){loadingVis(runId, id);}, 30);
     ssParam.resultTerms = [];
 
+
     //// construct SPARQL query
     let sparqlQuery = ssParam.textarea[id].value;
     sparqlQuery = sparqlQuery.replace(/([\s\.\;])=b(\s)/g, "$1\n=b\n$2").replace(/([\s\.\;])=e(\s)/g, "$1\n=e\n$2").replace(/([\s\.\;])=begin(\s)/g, "$1\n=begin\n$2").replace(/([\s\.\;])=end(\s)/g, "$1\n=end\n$2").replace(/\n\s*\n/g, "\n"); // for multi-line coment
@@ -792,7 +786,9 @@ async function innerModeRunQuery(queryTab, id, describe){
     let searchPredicate = false;
     let multiLineComment = false;
     let mlcF = 1;
-    let sparqlApiMd = false;
+    let sparqlApiMd = false;     // SPARQList markdown format
+    let sparqlDoc = false;       // SPARQL doc format
+    let sparqlMustache = false;  // mustache parameters
 
     //// get endpoint
     let endpoint = ssParam.formNode[id].action;
@@ -814,67 +810,85 @@ async function innerModeRunQuery(queryTab, id, describe){
 	defineLine = true;
     }
 
-    //// edit construct SPARQL query for multi-line comments
-    if(sparqlQuery.match(/\n\`\`\`sparql/)) sparqlApiMd = true;
+    //// edit SPARQL query for multi-line comments
     for(let i = 0; i < lines.length; i++){
-	if(lines[i].toLowerCase().match(/^\s*prefix\s+/)){
+	if(lines[i].match(/^\`\`\`sparql/)) sparqlApiMd = true;
+	if(lines[i].match(/^# +@endpoint +https*:/) 
+	   || lines[i].match(/^# +@param +\w+/)
+	   || lines[i].match(/^# +@temp-proxy +true/)) sparqlDoc = true;
+	if(lines[i].match(/\{\{\w+\}\}/)) sparqlMustache = true;
+	if(lines[i].toLowerCase().match(/^\s*prefix\s+/)){ 
 	    let tmp = lines[i].replace(/(\w+):\</, function(){ return arguments[1] + ": <"; }).replace(/^\s*/, "").split(/\s+/);
 	    tmp[1] = tmp[1].replace(/:$/, "");
 	    tmp[2] = tmp[2].replace(/[\<\>]/g, "");
 	    ssParam.prefix2Uri[tmp[1]] = tmp[2];
 	}
-	if((lines[i].match(/ \^*\?\?p\s/) || lines[i].match(/ \^*\?\?p$/)) && !lines[i].match(/^ *#/) && mlcF == 1) searchPredicate = true;
+	if((lines[i].match(/ \^*\?\?\s/) || lines[i].match(/ \^*\?\?$/)) && !lines[i].match(/^ *#/) && mlcF == 1) searchPredicate = true;
 	if(lines[i].match(/^\s*=begin\s*$/) || lines[i].match(/^\s*=b\s*$/)){ multiLineComment = true; mlcF = 0; }
 	else if(lines[i].match(/^\s*=end\s*$/) || lines[i].match(/^\s*=e\s*$/)){ mlcF = 1;}
     }
-
+    
     let uri2prefix = {};
     for(let key in ssParam.prefix2Uri){
 	if(ssParam.prefix2Uri.hasOwnProperty(key)){
 	    uri2prefix[ssParam.prefix2Uri[key]] = key;
 	}
-    }
+    }  
 
-    //// edit SPARQL query for sparql-doc format
-    let sparqlDoc = false;
-    let sparqlDocParams = [];
-    lines = sparqlQuery.split("\n");
-    for(let i = 0; i < lines.length; i++){
-	if(lines[i].match(/^# +@param +.+/)){
-	    let param_line = lines[i].match(/^# +@param +(\w+)\s*=\s*(.+)/);
-	    let key = param_line[1];
-	    let value = param_line[2];
-	    if(param_line[2].match(/^\'/)) value = param_line[2].match(/^\'([^\']+)\'/)[1];
-	    else if(param_line[2].match(/^\"/)) value = param_line[2].match(/^\"([^\"]+)\"/)[1];
-	    else value = param_line[2].match(/^([^\s]+)/)[1];
-	    sparqlDocParams[key] = value;
-	}
-    }
-    for(let i = 0; i < lines.length; i++){
-	while(lines[i].match(/\{\{\w+\}\}/)){
-            if(lines[i].match(/\{\{\w+\}\}/)){
-                var words = lines[i].match(/(.*)\{\{(\w+)\}\}(.*)/);
-		if(sparqlDocParams[words[2]]) lines[i] = words[1] + sparqlDocParams[words[2]] + words[3];
-	    }
-        }
-    }
-    sparqlQuery = lines.join("\n");
-    
-    //// edit SPARQL query for predicate search
-    if(sparqlApiMd || searchPredicate || multiLineComment){
+    //// edit SPARQL query
+    if(describe){
+	sparqlQuery = "DESCRIBE <" + describe + ">";
+    }else if(sparqlApiMd || searchPredicate || multiLineComment || sparqlDoc || sparqlMustache){
 	sparqlQuery = "";
 	let f = 1;
 	if(sparqlApiMd) f = 0;
+	if(sparqlDoc) ssParam.prefixList = "";
+	let sparqlMustacheParams = [];
+	ssParam.temporary_proxy = false;
 	for(let i = 0; i < lines.length; i++){
 	    if(sparqlApiMd){ // for SPARQList markdown format
+		if(f == 0 && lines[i].match(/^\* +\`\w+\`/)){
+		    let key = lines[i].match(/^\* +\`(\w+)\`/)[1];
+		    let value = lines[i+1].match(/^ +\* *default: *(.+)$/)[1];
+		    sparqlMustacheParams[key] = value;
+		}
 		if(f == 0 && lines[i].match(/^\s*https*:\/\//)){ endpoint = lines[i].match(/^\s*(https*:\/\/[^\s;,]+)/)[1]; }
 		else if(lines[i].match(/^\`\`\`sparql/)){ f = 1; continue; }
 		else if(lines[i].match(/^\`\`\`/)){ f = 2; }
 	    }
+	    if(sparqlDoc){ // for sparql-doc format
+		if(lines[i].match(/^# +@param +.+/)){
+		    let param_line = lines[i].match(/^# +@param +(\w+)\s*=\s*(.+)/);
+		    let key = param_line[1];
+		    let value = param_line[2];
+		    if(param_line[2].match(/^\'/)) value = param_line[2].match(/^\'([^\']+)\'/)[1];
+		    else if(param_line[2].match(/^\"/)) value = param_line[2].match(/^\"([^\"]+)\"/)[1];
+		    else value = param_line[2].match(/^([^\s]+)/)[1];
+		    sparqlMustacheParams[key] = value;
+		}else if(lines[i].toLowerCase().match(/^# +@prefixes +https*:\/\//)) {
+		    let url = lines[i].match(/^# +@.+ +(https*:\/\/[^\s;]+)/)[1];
+		    if(!ssParam.prefixListUrl[url]){
+			ssParam.prefixListUrl[url] = await getCustomPrefixList(url.replace(/,/g, "%2C"));
+			ssParam.prefixList += ssParam.prefixListUrl[url];
+		    }else if(ssParam.prefixListUrl[url]){
+			ssParam.prefixList += ssParam.prefixListUrl[url];
+		    }
+		}else if(lines[i].toLowerCase().match(/^# +@temp-proxy +true/)) {
+		    ssParam.temporary_proxy = true;
+		}
+	    }
+	    if(sparqlMustache && (sparqlDoc || sparqlApiMd)){ // for mustache parameters
+		while(lines[i].match(/\{\{\w+\}\}/)){
+		    if(lines[i].match(/\{\{\w+\}\}/)){
+			var words = lines[i].match(/(.*)\{\{(\w+)\}\}(.*)/);
+			if(sparqlMustacheParams[words[2]]) lines[i] = words[1] + sparqlMustacheParams[words[2]] + words[3];
+		    }
+		}
+	    }
 	    if(searchPredicate && f == 1){ // for predicate seaech
 		if(searchPredicate && lines[i].toUpperCase().match(/\s*SELECT /)){ lines[i] = "\nSELECT DISTINCT ?__p__ (SAMPLE(?__o__) AS ?sample)"; }
-		else if(searchPredicate && (lines[i].match(/ \?\?p\s/) || lines[i].match(/ \?\?p$/))){lines[i] = "\n" + lines[i].match(/(.+) \?\?p/)[1] + " $__p__ ?__o__ ."; }
-		else if(searchPredicate && (lines[i].match(/ \^\?\?p\s/) || lines[i].match(/ \^\?\?p$/))){lines[i] = "\n $__o__ ?__p__ " + lines[i].match(/(.+) \^\?\?p/)[1] + " ."; }
+		else if(searchPredicate && (lines[i].match(/ \?\?\s/) || lines[i].match(/ \?\?$/))){lines[i] = "\n" + lines[i].match(/(.+) \?\?/)[1] + " $__p__ ?__o__ ."; }
+		else if(searchPredicate && (lines[i].match(/ \^\?\?\s/) || lines[i].match(/ \^\?\?$/))){lines[i] = "\n $__o__ ?__p__ " + lines[i].match(/(.+) \^\?\?/)[1] + " ."; }
 	    }
 	    if(multiLineComment){ // for multi-line comment out
 		if((lines[i].match(/^\s*=begin\s*$/) || lines[i].match(/^\s*=b\s*$/)) && f == 1){ f = 0; }
@@ -882,11 +896,12 @@ async function innerModeRunQuery(queryTab, id, describe){
 	    }
 	    if(f == 1) sparqlQuery = sparqlQuery + "\n" + lines[i];
 	}
-    }else if(describe){
-	sparqlQuery = "DESCRIBE <" + describe + ">";
+	if(ssParam.prefixList) sparqlQuery = ssParam.prefixList + sparqlQuery;
     }
     if(!describe) resetDescribeLog();
 
+    console.log(sparqlQuery);
+    
     //// set fetch body
     let body = "query=" + encodeURIComponent(sparqlQuery);
     if(document.getElementById("default-graph-uri")) body += "&default-graph-uri=" + encodeURIComponent(document.getElementById("default-graph-uri").value);
@@ -904,7 +919,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 
     // relay https://sparql-support.dbcls.jp/api/relay for 'HTTP'-endpoint from 'HTTPS'-SPARQL_spport (for SSL Mixed Content)
     let original_endpoint = false;
-    if(ssParam.mixedContent == 1 && location.protocol == "https:" && endpoint.match(/^http:/)){
+    if((ssParam.mixedContent == 1 && location.protocol == "https:" && endpoint.match(/^http:/)) || ssParam.temporary_proxy){
 	options.body += "&endpoint=" + encodeURIComponent(endpoint);
 	original_endpoint = endpoint;
 	endpoint = "https://sparql-support.dbcls.jp/api/relay";
@@ -922,9 +937,9 @@ async function innerModeRunQuery(queryTab, id, describe){
     }catch(error){
 	console.log(error);
 	let endTime = Date.now();
-	let submesse = "endpoint error";
-	if(location.protocol == "https:" && endpoint.match(/^http:/)) submesse = "SSL Mixed Content Error: When the endpoint is not HTTPS, you should use SPARQL support on HTTP. \nOr, set a option to access endpoints via sparql-support.dbcls.jp (set command: '# mixed_content_relay: true;' -> 'Ctrl+Enter').";
-	let text = "browser error: " + error.message + "\n\n" + submesse;
+	let submesse = "SPARQL support message:\nendpoint error, or blocked CORS req.\nIf CORS blocking. Set a option to access endpoint via 'sparql-support.dbcls.jp'.\n\n    Option: '# @temp-proxy true' in comment";
+	if(location.protocol == "https:" && endpoint.match(/^http:/)) submesse = "SPARQL support message:\nSSL Mixed Content Error: When the endpoint is not HTTPS, you should use SPARQL support on HTTP. \nOr, set a option to access endpoints via 'sparql-support.dbcls.jp'.\n\n    Temporary: '# @temp-proxy true' in comment\n    Permanent: set command: '# mixed-content-proxy: true;' -> 'Ctrl+Enter'";
+	let text = "Browser error message:\n" + error.message + "\n\n\n" + submesse;
 	if(endTime - startTime > 30000) text += "\nor endpoint timeout (" + (Math.round((endTime - startTime) / 100) / 10) + " sec.)";
 	outError({status: "", text: text}, runId);
     }
@@ -1047,9 +1062,7 @@ function initDiv(cm, id){
     }
     if(getPrefixFlag){
 	localStorage[ssParam.pathName + '_prefix_uri_' + id] = now;
-	for(let i = 0; ssParam.defaultPrefix[i]; i++) {
-	    setPrefixUri(cm, 0, id, ssParam.defaultPrefix[i].replace(/:$/, ""), 0);
-	}
+	setPrefixUri(cm, 0, id, ssParam.defaultPrefix.join(",").replace(/:/g, ""), 0);
     }
     setDefaultUri();
 
@@ -1088,10 +1101,17 @@ function initDiv(cm, id){
     ulNode.id = "query_tab_list_" + id;
     ulNode.className = "cm-ss_query_tab_list";
 
+    // ul for help button
+    ulNode = document.createElement("ul");
+    codeMirrorDiv.appendChild(ulNode);
+    ulNode.id = "query_help_" + id;
+    ulNode.className = "cm-ss_query_tab_list";
+    
     let resParent = document.createElement("div");
     resParent.id = "inner_mode_div";
+    //ssParam.textarea[id].parentNode.appendChild(resParent);
     ssParam.formNode[id].appendChild(resParent);
-
+    
     ssParam.resultNode[id] = document.createElement("div");
     resParent.appendChild(ssParam.resultNode[id]);
     ssParam.resultNode[id].style.width = areaWidth + 'px';
@@ -1187,15 +1207,69 @@ function initDivQueries(cm, id){
 function initDivInner(cm, id){
     let codeMirrorDiv = ssParam.codeMirrorDiv[id];
     let ulNode = document.getElementById("query_tab_list_" + id);
+    let ulNodeHelp = document.getElementById("query_help_" + id);
     let liNode = document.createElement("li");
     if(!ssParam.innerMode) ssParam.innerMode = {};
     ssParam.innerMode[id] = 0;
 
+    // switch button (inner mode, json)
     ulNode.appendChild(liNode);
     liNode.id = "query_tab_inner_" + id;
     liNode.className = "query_tab";
     liNode.style.width = "14px";
     liNode.innerHTML = "i";
+    liNode = document.createElement("li");
+    ulNode.appendChild(liNode);
+    liNode.className = "query_tab_hide";
+    liNode.style.width = "14px";
+    liNode.innerHTML = "&#x25b2;";
+    liNode.onclick = function(){
+	let count = 0;
+	let moveTab = function(){
+	    count++;
+	    if(count <= 10){
+		let tmp = count * (-3);
+		ulNode.style.top = tmp + "px";
+	    }else if(count <= 20){
+		let tmp = (count - 10) * 3 - 25;
+		ulNodeHelp.style.top = tmp + "px";
+	    }else clearInterval(timer);
+	};
+	let timer = setInterval(moveTab, 50);
+    };
+    
+    // help button
+    ulNodeHelp.style.top = "-30px";
+    let url = "https://sparql-support.dbcls.jp/sparql-support.html";
+    if(window.navigator.languages && window.navigator.languages[0] == "ja") url = "https://sparql-support.dbcls.jp/sparql-support_j.html";
+    liNode = document.createElement("li");
+    ulNodeHelp.appendChild(liNode);
+    liNode.id = "query_tab_help_" + id;
+    liNode.className = "query_tab";
+    liNode.style.width = "14px";
+    liNode.innerHTML = "?";
+    liNode.style.color = "rgba(127, 127, 127, 1)";
+    liNode.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
+    liNode.onclick = function(){ window.open(url, "_blank"); };
+    liNode = document.createElement("li");
+    ulNodeHelp.appendChild(liNode);
+    liNode.className = "query_tab_hide";
+    liNode.style.width = "14px";
+    liNode.innerHTML = "&#x25b2;";
+    liNode.onclick = function(){
+	let count = 0;
+	let moveTab = function(){
+	    count++;
+	    if(count <= 10){
+		let tmp = count * (-3);
+		ulNodeHelp.style.top = tmp + "px";
+	    }else if(count <= 20){
+		let tmp = (count - 10) * 3 - 25;
+		ulNode.style.top = tmp + "px";
+	    }else clearInterval(timer);
+	};
+	let timer = setInterval(moveTab, 50);
+    };
 
     if(localStorage[ssParam.pathName + '_sparql_target_' + id]){
 	let target = localStorage[ssParam.pathName + '_sparql_target_' + id];
@@ -1206,6 +1280,15 @@ function initDivInner(cm, id){
     }
 
     ssParam.color = { "f": 1, "n": 63, "q": false};
+
+    let params = location.search.substring(1).split('&');
+    for(let i = 0; i < params.length; i++){
+	if(params[i] == "exec=1"){
+	    //console.log(localStorage[ssParam.pathName + "_sparql_code_select_tab_" + id]);
+	    innerModeRunQuery(localStorage[ssParam.pathName + "_sparql_code_select_tab_" + id], id, 0);
+	    break;
+	}
+    }
 }
 
 /// tabbed  mode
@@ -1468,8 +1551,8 @@ function ssCommand(cm, id, caret, line){
 	caret = cm.getCursor('anchor');
 	let end = cm.lineCount();
 	cm.replaceRange(string, Pos(caret.line, caret.ch), Pos(end, 0));
-    }else if(line.match(/^#\s*mixed_content_relay\s*:\s*.+\s*;$/)){
-	let f = line.match(/^#\s*mixed_content_relay\s*:\s*(.+)\s*;\s*$/)[1];
+    }else if(line.match(/^#\s*mixed-content-proxy\s*:\s*.+\s*;$/)){
+	let f = line.match(/^#\s*mixed-content-proxy\s*:\s*(.+)\s*;\s*$/)[1];
 	if(f == "true"){
 	    ssParam.mixedContent = 1;
 	    localStorage[ssParam.pathName + '_mixed_content_' + id] = 1;
@@ -1555,12 +1638,60 @@ async function setPrefixUri(cm, caret, id, prefix, flag) {
     let url = "https://prefix.cc/" + prefix + ".file.json";
     let options = { method: 'GET' };
     let res = await fetch(url, options).then(res=>res.json());
-    let uri = await res[prefix];
-    ssParam.prefix2Uri[prefix] = uri;
-    localStorage[ssParam.pathName + '_prefix_uri_' + id] += " " + prefix + "," + uri;
-    if(flag){
-	cm.replaceRange(" <" + uri + ">", Pos(caret.line, caret.ch), Pos(caret.line, caret.ch));
-	saveCode(cm, id);
+    let prefixes = prefix.split(",");
+    for(let i = 0; i < prefixes.length; i++){
+	let prefix = prefixes[i].replace(/:$/, "");
+	let uri = await res[prefix];
+	ssParam.prefix2Uri[prefix] = uri;
+	localStorage[ssParam.pathName + '_prefix_uri_' + id] += " " + prefix + "," + uri;
+	if(flag){
+	    cm.replaceRange(" <" + uri + ">", Pos(caret.line, caret.ch), Pos(caret.line, caret.ch));
+	    saveCode(cm, id);
+	}
+    }
+}
+
+async function getCustomPrefixList(url) {
+    if(ssParam.mixedContent == 1 && location.protocol == "https:" && url.match(/^http:/)){
+	url = "https://sparql-support.dbcls.jp/api/relay?endpoint=" + encodeURIComponent(url);
+    }
+    let options = { method: 'GET' };
+    let res = await fetch(url, options).then(res=>res.text());
+    let list = res;
+    if(isJson(res)){
+	list = "";
+	let json = JSON.parse(res);
+	let prefixes = Object.keys(json);
+	for(let i = 0; i < prefixes.length; i++){
+	    list += "PREFIX " + prefixes[i] + ": <" + json[prefixes[i]] + ">\n";
+	}
+    }
+    if(list) return list;
+    else return false;
+}
+
+async function setFormAction(cm, id, text){
+    let lines = text.split(/\n/);
+    if(lines[0].toLowerCase().match(/^##+ *endpoint +https*:\/\/[^\s]/)){
+	ssParam.formNode[id].action = lines[0].match(/^##+.* +(https*:\/\/[^\s,;]+)/)[1];
+    }else{
+	ssParam.formNode[id].action = ssParam.defaultEndpoint[id];
+    }
+    ssParam.prefixList = "";
+    for(let i = 0; i < lines.length; i++){
+	if(lines[i].toLowerCase().match(/^# +@endpoint +https*:\/\/[^\s]/)) {
+	    ssParam.formNode[id].action = lines[i].match(/^# +@.+ +(https*:\/\/[^\s,;]+)/)[1];
+	}else if(lines[i].toLowerCase().match(/^# +@prefixes +https*:\/\/[^\s]/)) {
+	    let caret = cm.getCursor('anchor');
+	    if(caret.line == i) continue;
+	    let url = lines[i].match(/^# +@.+ +(https*:\/\/[^\s;]+)/)[1];
+	    if(!ssParam.prefixListUrl[url]){
+		ssParam.prefixListUrl[url] = await getCustomPrefixList(url.replace(/,/g, "%2C"));
+		ssParam.prefixList += ssParam.prefixListUrl[url];
+	    }else if(ssParam.prefixListUrl[url]){
+		ssParam.prefixList += ssParam.prefixListUrl[url];
+	    }
+	}
     }
 }
 
@@ -1574,4 +1705,17 @@ function getDomain(path) {
 
 function unique(a){
     return Array.from(new Set(a));
+}
+
+function isJson(arg){
+    arg = (typeof arg === "function") ? arg() : arg;
+    if (typeof arg  !== "string") {
+        return false;
+    }
+    try {
+        arg = JSON.parse(arg);
+        return true;
+    } catch (e) {
+        return false;
+    }
 }

@@ -37,6 +37,22 @@ li.query_tab {
     -ms-user-select: none;
 }
 
+li.query_tab_hide {
+    position: relative;
+    list-style: none;
+    display: inline-block;
+    width: 50px;
+    margin-right: 2px;
+    text-align: center;
+    color: rgba(127, 127, 127, 0.5);
+    cursor: default;
+    font-size: 12px;
+    user-select: none;
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    -ms-user-select: none;
+}
+
 div.cm-ss_result {
     background-color: #f8f8f8;
     height: 300px;
