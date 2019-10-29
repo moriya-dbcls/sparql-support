@@ -1212,6 +1212,21 @@ function initDivInner(cm, id){
     if(!ssParam.innerMode) ssParam.innerMode = {};
     ssParam.innerMode[id] = 0;
 
+    let moveSwitchTab = function(hideNode, showNode){
+	let count = 0;
+	let moveTab = function(){
+	    count++;
+	    if(count <= 10){
+		let tmp = count * (-3);
+		hideNode.style.top = tmp + "px";
+	    }else if(count <= 20){
+		let tmp = (count - 10) * 3 - 25;
+		showNode.style.top = tmp + "px";
+	    }else clearInterval(timer);
+	};
+	let timer = setInterval(moveTab, 30);
+    }
+
     // switch button (inner mode, json)
     ulNode.appendChild(liNode);
     liNode.id = "query_tab_inner_" + id;
@@ -1223,21 +1238,8 @@ function initDivInner(cm, id){
     liNode.className = "query_tab_hide";
     liNode.style.width = "14px";
     liNode.innerHTML = "&#x25b2;";
-    liNode.onclick = function(){
-	let count = 0;
-	let moveTab = function(){
-	    count++;
-	    if(count <= 10){
-		let tmp = count * (-3);
-		ulNode.style.top = tmp + "px";
-	    }else if(count <= 20){
-		let tmp = (count - 10) * 3 - 25;
-		ulNodeHelp.style.top = tmp + "px";
-	    }else clearInterval(timer);
-	};
-	let timer = setInterval(moveTab, 50);
-    };
-    
+    liNode.onclick = function(){ moveSwitchTab(ulNode, ulNodeHelp); };
+
     // help button
     ulNodeHelp.style.top = "-30px";
     let url = "https://sparql-support.dbcls.jp/sparql-support.html";
@@ -1256,20 +1258,7 @@ function initDivInner(cm, id){
     liNode.className = "query_tab_hide";
     liNode.style.width = "14px";
     liNode.innerHTML = "&#x25b2;";
-    liNode.onclick = function(){
-	let count = 0;
-	let moveTab = function(){
-	    count++;
-	    if(count <= 10){
-		let tmp = count * (-3);
-		ulNodeHelp.style.top = tmp + "px";
-	    }else if(count <= 20){
-		let tmp = (count - 10) * 3 - 25;
-		ulNode.style.top = tmp + "px";
-	    }else clearInterval(timer);
-	};
-	let timer = setInterval(moveTab, 50);
-    };
+    liNode.onclick = function(){ moveSwitchTab(ulNodeHelp, ulNode); };
 
     if(localStorage[ssParam.pathName + '_sparql_target_' + id]){
 	let target = localStorage[ssParam.pathName + '_sparql_target_' + id];
@@ -1284,7 +1273,6 @@ function initDivInner(cm, id){
     let params = location.search.substring(1).split('&');
     for(let i = 0; i < params.length; i++){
 	if(params[i] == "exec=1"){
-	    //console.log(localStorage[ssParam.pathName + "_sparql_code_select_tab_" + id]);
 	    innerModeRunQuery(localStorage[ssParam.pathName + "_sparql_code_select_tab_" + id], id, 0);
 	    break;
 	}
