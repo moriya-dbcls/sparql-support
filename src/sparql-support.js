@@ -670,7 +670,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 	for(let i = 0; i < vars.length; i++){
 	    let regex = new RegExp("\\s\\$" + vars[i] + "\\s");
 	    resTh = document.createElement("th");
-	    let tmp = vars[i];
+	    let tmp = decodeURI(escape(vars[i]));
 	    if(searchPredicate && vars[i] == "__p__") tmp= "??";
 	    resTh.appendChild(document.createTextNode(tmp));
 	    resTr.appendChild(resTh);
