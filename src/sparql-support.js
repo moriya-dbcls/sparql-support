@@ -644,6 +644,71 @@ async function innerModeRunQuery(queryTab, id, describe){
 	return 0;
     }
 
+    //// download button
+    let mkDlButton = function(resDiv, tab, id){
+	let dlSelect = document.createElement("select");
+	dlSelect.classList.add("result_download_button");
+	dlSelect.add( (new Option("Download", "dl", "defaultselected", "selected")));
+	dlSelect.add( (new Option("JSON", "json")));
+	dlSelect.add( (new Option("CSV", "csv")));
+	dlSelect.add( (new Option("TSV", "tsv")));
+	dlSelect.onchange = function(){
+	    let type = this.value;
+	    if(type != "dl"){
+		let res = ssParam.dlResults["dl_json_" + tab + " " + id];
+		let data = JSON.stringify(res, null, "  ");
+		let filename = "result.json";
+		if(type == "csv" || type == "tsv"){
+		    let delimiter = ",";
+		    filename = "result.csv";
+		    if(type == "tsv"){
+			delimiter = "\t";
+			filename = "result.tsv";
+		    }
+		    let heads = [];
+		    let lines = [];
+		    for(let param of res.head.vars){
+			param = decodeURI(escape(param));
+			if(searchPredicate && param == "__p__") param = "??";
+			if(type == "csv") param = "\"" + param + "\"";
+			heads.push(param);
+		    }
+		    for(let i = 0; i < res.results.bindings.length; i++){
+			let values = []
+			for(let param of res.head.vars){
+			    let value = "";
+			    if(res.results.bindings[i][param]){
+				value = res.results.bindings[i][param].value;
+				if(type == "csv"){
+				    value = value.replace(/\"/g, '""');
+				    value = "\"" + value + "\"";
+				}
+			    }
+			    values.push(value);
+			}
+			lines[i] = values.join(delimiter);
+		    }
+		    data = heads.join(delimiter) + "\n";
+		    data += lines.join("\n");
+		}
+		var blob = new Blob([data], { "type" : "text/plain" });
+                if (window.navigator.msSaveBlob) { 
+		    window.navigator.msSaveBlob(blob, filename); 
+		    window.navigator.msSaveOrOpenBlob(blob, filename); 
+                } else {
+		    let element = document.createElement("a");
+		    element.style.display = "none";
+		    resDiv.appendChild(element);
+		    element.href = window.URL.createObjectURL(blob);
+		    element.download = filename;
+		    element.click();
+		    element.remove();
+                }
+	    }
+	}
+	resDiv.appendChild(dlSelect);
+    }
+
     //// output result to inner html
     let outResult = function(res, runId, endpoint, describe){
 	let selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
@@ -656,6 +721,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 	resTime.appendChild(document.createTextNode("[ " + res.results.bindings.length + " bindings. -- " + sec + " sec. ]"));
 	resTime.className = "inner_result_time";
 	resDiv.appendChild(resTime);
+	if(!describe) mkDlButton(resDiv, selTab, id);
 
 	if(describe){
 	    let p = document.createElement("p");
@@ -755,6 +821,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 	}else if(document.getElementById("slsLoading_" + id)){ // for SPARQList support
 	    document.getElementById("slsLoading_" + id).style.visibility = "hidden";
 	}
+	ssParam.dlResults["dl_json_" + runTab + " " + id] = res;
 	delete ssParam.job[runId];
 
 	// save endpoint list
@@ -959,6 +1026,7 @@ function initDiv(cm, id){
 	ssParam.defaultEndpoint = {};
 	ssParam.job = {};
 	ssParam.results = {};
+	ssParam.dlResults = {};
     }
 
     let codeMirrorDiv = cm.display.wrapper;

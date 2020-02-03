@@ -152,3 +152,9 @@ li.cm-ss_subres_li_invalid {
     color: #ffffff;
     background-color: #c0c0c0;
 }
+
+select.result_download_button{
+    position: absolute;
+    top: 5px;
+    right: 10px;
+}
