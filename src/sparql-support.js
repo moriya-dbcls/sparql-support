@@ -992,9 +992,19 @@ async function innerModeRunQuery(queryTab, id, describe){
 	endpoint = "https://sparql-support.dbcls.jp/api/relay";
     }
 
+    // set timeout of fetch (https://stackoverflow.com/questions/46946380/fetch-api-request-timeout/46946573#46946573)
+    function timeout(ms, promise) {
+	return new Promise(function(resolve, reject) {
+	    setTimeout(function() {
+		reject(new Error("timeout"))
+	    }, ms)
+	    promise.then(resolve, reject)
+	})
+    }
+    
     //// run fetch
     try{
-	let res = await fetch(endpoint, options).then(handleResponse);
+	let res = await timeout(600000, fetch(endpoint, options)).then(handleResponse);
 	if(res.error){
 	    outError(res, runId);
 	}else{
