@@ -37,8 +37,10 @@ CodeMirror.defineOption("sparqlSupportQueries", false, function(cm, id) {
 	    mouseup: function() { mouseUp(cm, id); },
 	    mousemove: function(e) { mouseMove(cm, e, id); }
 	};
-	CodeMirror.on(cm.getWrapperElement(), "mousedown", data.mousedown);
-	CodeMirror.on(cm.getWrapperElement(), "mousemove", data.mousemove);
+	// CodeMirror.on(cm.getWrapperElement(), "mousedown", data.mousedown);
+	// CodeMirror.on(cm.getWrapperElement(), "mousemove", data.mousemove);
+	document.addEventListener("mousedown", data.mousedown, false);
+	document.addEventListener("mousemove", data.mousemove, false);
 	window.addEventListener ("mouseup", data.mouseup, false);
 
 	initDivQueries(cm, id);
@@ -68,7 +70,8 @@ let ssParam = {
     mixedContent: 1,
     prefixList: "",
     prefixListUrl: [],
-    ctrlEnterSubmitFlag: true
+    ctrlEnterSubmitFlag: true,
+    sparqlProxyFlag: false
 }
 
 /// event
@@ -145,6 +148,7 @@ function keyDown(cm, e, id){
 	ssParam.termFrag = "";
 	ssParam.preString = "";
     }
+    hidePopupCopyForm();
     saveCode(cm, id);
 }
 
@@ -160,10 +164,9 @@ function mouseDown(cm, e, id) {
     ssParam.queryTabFlag = false;
     ssParam.dragFlag = false;
     ssParam.confirmBox.style.display = "none";
-    if(e.target.className == "query_tab"){
-	if(e.target.id == "query_tab_remove_" + id){
-	    removeTabRun(cm, id);
-	}else if(e.target.id == "query_tab_plus_" + id){
+    if(!e.target.className.match("copy_popup_form")) hidePopupCopyForm();
+    if(e.target.className.match("query_tab")){
+	if(e.target.id == "query_tab_plus_" + id){
 	    addTab(cm, id);
 	}else if(e.target.id == "query_tab_minus_" + id){
 	    if(parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]) != 0){
@@ -173,7 +176,7 @@ function mouseDown(cm, e, id) {
 	    //	innerMode(id);
 	}else if(e.target.id == "query_tab_help_" + id){
 	    // help button click
-	}else if(e.target.id != "query_tab_cancel_" + id){
+	}else{
 	    let selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	    if(parseInt(e.target.innerHTML) - 1 != selTab) changeTab(cm, parseInt(e.target.innerHTML) - 1, id);
 	    else{
@@ -187,6 +190,10 @@ function mouseDown(cm, e, id) {
 	    }
 	}
 	ssParam.queryTabFlag = true;
+    }else if(e.target.className.match("confirm_button")){
+	if(e.target.id == "query_tab_remove_" + id){
+	    removeTabRun(cm, id);
+	}
     }
 }
 
@@ -644,7 +651,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 	return 0;
     }
 
-    //// download button
+    //download button
     let mkDlButton = function(resDiv, tab, id){
 	let dlSelect = document.createElement("select");
 	dlSelect.classList.add("result_download_button");
@@ -722,7 +729,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 	resTime.className = "inner_result_time";
 	resDiv.appendChild(resTime);
 	if(!describe) mkDlButton(resDiv, selTab, id);
-
+	
 	if(describe){
 	    let p = document.createElement("p");
 	    p.className = "inner_result_sub_title";
@@ -737,7 +744,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 	    let regex = new RegExp("\\s\\$" + vars[i] + "\\s");
 	    resTh = document.createElement("th");
 	    let tmp = decodeURI(escape(vars[i]));
-	    if(searchPredicate && vars[i] == "__p__") tmp= "??";
+	    if(searchPredicate && vars[i] == "__p__") tmp = "??";
 	    resTh.appendChild(document.createTextNode(tmp));
 	    resTr.appendChild(resTh);
 	}
@@ -817,7 +824,10 @@ async function innerModeRunQuery(queryTab, id, describe){
 	if(ssParam.color.q == runTab) ssParam.color.q = false;
 	clearInterval(loadingTimer);
 	if(document.getElementById("query_tab_" + runTab + "_" + id)){
-	    document.getElementById("query_tab_" + runTab + "_" + id).style.borderColor = "rgba(127, 127, 127, 0.5)";
+	    let className = "query_tab";
+	    if(selTab == runTab) className = "query_tab query_tab_active";
+	    document.getElementById("query_tab_" + runTab + "_" + id).style.borderColor = null;
+	    document.getElementById("query_tab_" + runTab + "_" + id).className = className;
 	}else if(document.getElementById("slsLoading_" + id)){ // for SPARQList support
 	    document.getElementById("slsLoading_" + id).style.visibility = "hidden";
 	}
@@ -1004,7 +1014,7 @@ async function innerModeRunQuery(queryTab, id, describe){
     
     //// run fetch
     try{
-	let res = await timeout(600000, fetch(endpoint, options)).then(handleResponse);
+	let res = await timeout(1800000, fetch(endpoint, options)).then(handleResponse);
 	if(res.error){
 	    outError(res, runId);
 	}else{
@@ -1039,6 +1049,15 @@ function initDiv(cm, id){
 	ssParam.dlResults = {};
     }
 
+    // check on SPARQL-proxy
+    if(document.getElementsByTagName("title")){
+	let page_title = document.getElementsByTagName("title")[0].innerHTML;
+	if(page_title == "sparql-proxy" && document.getElementsByTagName("nav")){
+	    let page_nav = document.getElementsByTagName("nav")[0].innerHTML;
+	    if(page_nav.match("SPARQL Proxy")) ssParam.sparqlProxyFlag = true;
+	}
+    }
+    
     let codeMirrorDiv = cm.display.wrapper;
     ssParam.codeMirrorDiv[id] = codeMirrorDiv;
     let parentNode = codeMirrorDiv.parentNode;
@@ -1052,6 +1071,17 @@ function initDiv(cm, id){
     }
     ssParam.textarea[id] = textarea;
 
+    // query tab div
+    let newNode = document.createElement("div")
+    let controlNode = parentNode.insertBefore(newNode, codeMirrorDiv)
+    controlNode.className = "control_tabs";
+    controlNode.id = "control_tabs";
+    
+    // copy to clipboard div
+    newNode = document.createElement("div")
+    let clipboardNode = parentNode.insertBefore(newNode, codeMirrorDiv.nextSibling)
+    clipboardNode.className = "clipboard_ctrl";
+    
     // parent form
     for(let i = 0; i < 100; i++){
 	if(parentNode.tagName.toLowerCase() == "form"){
@@ -1116,6 +1146,10 @@ function initDiv(cm, id){
     if(parseInt(baseStyle.fontSize.replace("px", "")) < 16) codeMirrorDiv.style.fontSize = "16px" ;
     if(baseStyle.fontFamily != "monospace" && baseStyle.fontFamily != "Courier" && baseStyle.fontFamily != "Consolas" && baseStyle.fontFamily != "Monaco") codeMirrorDiv.style.fontFamily = "monospace, Courier, Consolas, Monaco";
 
+    // query tab div, clipboard div
+    controlNode.style.width = areaWidth + 'px';
+    //	clipboardNode.style.width = areaWidth + 'px';
+    
     ssParam.pathName = location.pathname;
 
     // sparql default
@@ -1127,7 +1161,7 @@ function initDiv(cm, id){
     if(localStorage[ssParam.pathName + '_prefix_uri_' + id]){
 	let list = localStorage[ssParam.pathName + '_prefix_uri_' + id].split(" ");
 	let time = list.shift();
-	if(now - time > 86400){ // 1 day
+	if(now - time > 86400000){ // 1 day
 	    getPrefixFlag = true;
 	}else{
 	    for(let i = 0; i < list.length; i++) {
@@ -1173,21 +1207,60 @@ function initDiv(cm, id){
 	}
     }
 
+    // query set from url parameter
+    let pair = location.search.substring(1).split('&');
+    let param_code = "";
+    let param_end = "";
+    let param_exec = 0;
+    for(let i = 0; pair[i]; i++) {
+	let keyVal = pair[i].split('=');
+	if(keyVal[0] == "query"){
+	    param_code = decodeURIComponent(keyVal[1].replace(/\%20/g, " ").replace(/\+/g, " "));
+	}else if(keyVal[0] == "endpoint"){
+	    param_end = decodeURIComponent(keyVal[1].replace(/\%20/g, " ").replace(/\+/g, " "));
+	}else if(keyVal[0] == "exec"){
+	    param_exec = keyVal[1];
+	}
+    }
+    if(param_code){
+	if(param_end) { 
+	    param_code = "## endpoint " + param_end + "\n" + param_code;
+	}
+	let path = location.pathname;
+	let f = 1;
+	if(localStorage[path + "_sparql_code_tab_num_query"]){
+	    var tabNum = parseInt(localStorage[path + "_sparql_code_tab_num_query"]);
+	    for(let i = 0; i <= tabNum; i++){
+		if(typeof localStorage[path + "_sparql_code_" + i + "_query"] == 'undefined'){
+		    f = 2;
+		    tabNum = i;
+		    break;
+		}else if(localStorage[path + "_sparql_code_" + i + "_query"].replace(/[\n\r]+/g, "\n") == param_code.replace(/[\n\r]+/g, "\n")){
+		    localStorage[path + "_sparql_code_select_tab_query"] = i;
+		    f = 0;
+		    break;
+		}
+	    }
+	    if(f){
+		if(f == 1) tabNum++;
+		localStorage[path + "_sparql_code_tab_num_query"] = tabNum;
+		localStorage[path + "_sparql_code_select_tab_query"] = tabNum;
+		localStorage[path + "_sparql_code_" + tabNum + "_query"] = param_code;
+	    }
+	}
+	if(param_exec == 1) localStorage[path + "_sparql_target_query"] = "inner";
+	textarea.value = param_code;
+	setCmDiv(cm, id);
+    }
+    
     // Query tab
     let ulNode = document.createElement("ul");
-    codeMirrorDiv.appendChild(ulNode);
+    controlNode.appendChild(ulNode);
     ulNode.id = "query_tab_list_" + id;
-    ulNode.className = "cm-ss_query_tab_list";
-
-    // ul for help button
-    ulNode = document.createElement("ul");
-    codeMirrorDiv.appendChild(ulNode);
-    ulNode.id = "query_help_" + id;
     ulNode.className = "cm-ss_query_tab_list";
     
     let resParent = document.createElement("div");
     resParent.id = "inner_mode_div";
-    //ssParam.textarea[id].parentNode.appendChild(resParent);
     ssParam.formNode[id].appendChild(resParent);
     
     ssParam.resultNode[id] = document.createElement("div");
@@ -1224,6 +1297,29 @@ function initDiv(cm, id){
 	}
     }
 
+    // clipboard ctrl
+    if(!id.match(/^slsTa_/)){  // if not SPARQList
+	clipboardNode.style.height = "24px";
+	clipboardNode.innerHTML = `
+          <div class="fontawesome-paste copy_popup_form" id="copyIcon"></div>
+	  <p id="popupCopy" class="copy_popup_form">
+	    <input type="button" class="button copy_popup_form" id="copyButton" value="copy to clipboard">
+	    <span class="bottom_line copy_popup_form">
+	      <input type="radio" name="mode" id="rawQueryRadio" class="copy_popup_form" value="0" style="margin-left:30px;"> raw query
+	      <input type="radio" name="mode" id="queryUrlRadio" class="copy_popup_form" value="1" style="margin-left:10px;" checked="checked"> query URL
+	      <span style=" margin-right:30px;" class="copy_popup_form"><input type="radio" name="mode" class="copy_popup_form" id="shortUrlRadio" value="2" style="margin-left:10px;"> short URL</span>
+	      <span id="autorun" style="margin-right:30px;" class="copy_popup_form"><input type="checkbox" class="copy_popup_form" id="autoRunChkBox" value="1"> auto run </span>
+	    </span>
+	  </p>
+	  <span class="fontawesome-file-alt" id="fileIcon"></span>`;
+	document.getElementById("copyIcon").onclick = function(){ popupCopyForm(); };
+	document.getElementById("copyButton").onclick = function(){ copyToClipboard(); };
+	document.getElementById("rawQueryRadio").onclick = function(){ showAutoRunBox(0); };
+	document.getElementById("queryUrlRadio").onclick = function(){ showAutoRunBox(1); };
+	document.getElementById("shortUrlRadio").onclick = function(){ showAutoRunBox(2); };
+	document.getElementById("autoRunChkBox").onclick = function(){ setShortUrl(); };
+    }
+    
     saveCode(cm, id);
 }
 
@@ -1245,40 +1341,38 @@ function initDivQueries(cm, id){
 	liNode.className = "query_tab";
 	liNode.id = "query_tab_" + i + "_" + id;
 	if(i == selTab){
-	    liNode.style.color = "rgba(127, 127, 127, 1)";
-	    liNode.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
+	    liNode.className = "query_tab query_tab_active";
 	    liNode.style.cursor = "move";
 	    liNode.style.left = "0px";
 	}else if(i == tabNum + 1){
+	    liNode.className = "query_tab query_tab_button";
 	    liNode.id = "query_tab_plus_" + id;
-	    liNode.style.width = "14px";
+	    liNode.style.width = "18px";
 	    liNode.innerHTML = "+";
 	}else if(i == tabNum + 2){
+	    liNode.className = "query_tab query_tab_button";
 	    liNode.id = "query_tab_minus_" + id;
-	    liNode.style.width = "14px";
+	    liNode.style.width = "18px";
 	    liNode.innerHTML = "-";
 	}
     }
 
     let cancel = document.createElement("li");
     ssParam.rmCancel = cancel;
-    cancel.style.backgroundColor = "rgba(127, 127, 127, 0.5)";
-    cancel.style.color = "rgba(255, 255, 255, 1)";
-    cancel.className = "query_tab";
+    cancel.className = "confirm_button";
     cancel.id = "query_tab_cancel_" + id;
     cancel.style.width = "70px";
     cancel.innerHTML = "cancel";
     let remove = document.createElement("li");
     ssParam.rmDone = remove;
-    remove.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
-    remove.style.color = "rgba(127, 127, 127, 1)";
-    remove.className = "query_tab";
+    remove.className = "confirm_button";
     remove.id = "query_tab_remove_" + id;
     remove.style.width = "70px";
     remove.innerHTML = "remove";
     ssParam.confirmBox.appendChild(cancel);
     ssParam.confirmBox.appendChild(remove);
 
+    setQueryTabWidth(tabNum);
     saveCode(cm, id);
 }
 
@@ -1304,44 +1398,31 @@ function initDivInner(cm, id){
 	};
 	let timer = setInterval(moveTab, 30);
     }
-
+    
     // switch button (inner mode, json)
     ulNode.appendChild(liNode);
     liNode.id = "query_tab_inner_" + id;
-    liNode.className = "query_tab";
-    liNode.style.width = "14px";
-    liNode.innerHTML = "i";
-    liNode = document.createElement("li");
-    ulNode.appendChild(liNode);
-    liNode.className = "query_tab_hide";
-    liNode.style.width = "14px";
-    liNode.innerHTML = "&#x25b2;";
-    liNode.onclick = function(){ moveSwitchTab(ulNode, ulNodeHelp); };
-
+    liNode.className = "query_tab query_tab_button";
+    liNode.style.width = "80px";
+    liNode.style.marginLeft = "10px";
+    liNode.innerHTML = "endpoint";
+    
     // help button
-    ulNodeHelp.style.top = "-30px";
     let url = "https://sparql-support.dbcls.jp/sparql-support.html";
     if(window.navigator.languages && window.navigator.languages[0] == "ja") url = "https://sparql-support.dbcls.jp/sparql-support_j.html";
     liNode = document.createElement("li");
-    ulNodeHelp.appendChild(liNode);
+    ulNode.appendChild(liNode);
     liNode.id = "query_tab_help_" + id;
-    liNode.className = "query_tab";
-    liNode.style.width = "14px";
+    liNode.className = "query_tab query_tab_button";
+    liNode.style.width = "18px";
     liNode.innerHTML = "?";
-    liNode.style.color = "rgba(127, 127, 127, 1)";
-    liNode.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
     liNode.onclick = function(){ window.open(url, "_blank"); };
-    liNode = document.createElement("li");
-    ulNodeHelp.appendChild(liNode);
-    liNode.className = "query_tab_hide";
-    liNode.style.width = "14px";
-    liNode.innerHTML = "&#x25b2;";
-    liNode.onclick = function(){ moveSwitchTab(ulNodeHelp, ulNode); };
-
+    
     if(localStorage[ssParam.pathName + '_sparql_target_' + id]){
 	let target = localStorage[ssParam.pathName + '_sparql_target_' + id];
 	if(target == "inner") { switchInnerMode(id); }
-	if(target == "inner_j"){ switchInnerMode(id); switchInnerMode(id);}
+	else if(target == "inner_j"){ switchInnerMode(id); switchInnerMode(id);}
+	else if(ssParam.sparqlProxyFlag) { switchInnerMode(id); }
     }else{
 	switchInnerMode(id);
     }
@@ -1373,6 +1454,7 @@ function addTab(cm, id){
     ssParam.results['sparql_res_' + tabNum + "_" + id] = "";
     changeTab(cm, tabNum, id);
     localStorage[ssParam.pathName + '_sparql_code_tab_' + tabNum + "_" + id] = "";
+    setQueryTabWidth(tabNum);
 }
 
 function removeTab(cm, id){
@@ -1416,6 +1498,7 @@ function removeTabRun(cm, id){
 	let resTable = ssParam.results['sparql_res_' + selTab + "_" + id];
 	ssParam.resultNode[id].appendChild(resTable);
     }
+    setQueryTabWidth(tabNum);
     setCmDiv(cm, id);
 }
 
@@ -1445,11 +1528,9 @@ function changeTab(cm, newTab, id){
     }
 
     setCmDiv(cm, id);
-    document.getElementById("query_tab_" + newTab + "_" + id).style.backgroundColor = "rgba(255, 255, 255, 0.5)";
-    document.getElementById("query_tab_" + newTab + "_" + id).style.color = "rgba(127, 127, 127, 1)";
+    document.getElementById("query_tab_" + newTab + "_" + id).classList.add("query_tab_active");
     document.getElementById("query_tab_" + newTab + "_" + id).style.cursor = "move";
-    document.getElementById("query_tab_" + selTab + "_" + id).style.backgroundColor = "rgba(127, 127, 127, 0.5)";
-    document.getElementById("query_tab_" + selTab + "_" + id).style.color = "rgba(255, 255, 255, 1)";
+    document.getElementById("query_tab_" + selTab + "_" + id).classList.remove("query_tab_active");
     document.getElementById("query_tab_" + selTab + "_" + id).style.cursor = "default";
     localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id] = newTab;
     resetDescribeLog();
@@ -1471,21 +1552,19 @@ function replaceTab(cm, id, move){
 	let jobs = Object.keys(ssParam.job);
 	for(let i = 0; i < jobs.length; i++){
 	    if(ssParam.job[jobs[i]] == targetTab){
-		document.getElementById("query_tab_" + targetTab + "_" + id).style.borderColor = "rgba(127, 127, 127, 0.5)";
+		document.getElementById("query_tab_" + targetTab + "_" + id).classList.remove("query_tab_active");
 		ssParam.job[jobs[i]] = selTab;
 		ssParam.color.q = selTab;
 	    }else if(ssParam.job[jobs[i]] == selTab){
-		document.getElementById("query_tab_" + selTab + "_" + id).style.borderColor = "rgba(127, 127, 127, 0.5)";
+		document.getElementById("query_tab_" + selTab + "_" + id).classList.remove("query_tab_active");
 		ssParam.job[jobs[i]] = targetTab;
 		ssParam.color.q = targetTab;
 	    }
 	}
 	document.getElementById("query_tab_" + selTab + "_" + id).style.left = "0px";
-	document.getElementById("query_tab_" + targetTab + "_" + id).style.backgroundColor = "rgba(255, 255, 255, 0.5)";
-	document.getElementById("query_tab_" + targetTab + "_" + id).style.color = "rgba(127, 127, 127, 1)";
+	document.getElementById("query_tab_" + targetTab + "_" + id).classList.add("query_tab_active");
 	document.getElementById("query_tab_" + targetTab + "_" + id).style.cursor = "move";
-	document.getElementById("query_tab_" + selTab + "_" + id).style.backgroundColor = "rgba(127, 127, 127, 0.5)";
-	document.getElementById("query_tab_" + selTab + "_" + id).style.color = "rgba(255, 255, 255, 1)";
+	document.getElementById("query_tab_" + selTab + "_" + id).classList.remove("query_tab_active");
 	document.getElementById("query_tab_" + selTab + "_" + id).style.cursor = "default";
 	localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id] = targetTab;
     }
@@ -1494,16 +1573,12 @@ function replaceTab(cm, id, move){
 
 function changeRemoveConfirm(){
     if(ssParam.confirmFlag == 1){
-	ssParam.rmCancel.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
-	ssParam.rmCancel.style.color = "rgba(127, 127, 127, 1)";
-	ssParam.rmDone.style.backgroundColor = "rgba(127, 127, 127, 0.5)";
-	ssParam.rmDone.style.color = "rgba(255, 255, 255, 1)";
+	ssParam.rmCancel.classList.add("confirm_button_active");
+	ssParam.rmDone.classList.remove("confirm_button_active");
 	ssParam.confirmFlag = 2;
     }else{
-	ssParam.rmCancel.style.backgroundColor = "rgba(127, 127, 127, 0.5)";
-	ssParam.rmCancel.style.color = "rgba(255, 255, 255, 1)";
-	ssParam.rmDone.style.backgroundColor = "rgba(255, 255, 255, 0.5)";
-	ssParam.rmDone.style.color = "rgba(127, 127, 127, 1)";
+	ssParam.rmCancel.classList.remove("confirm_button_active");
+	ssParam.rmDone.classList.add("confirm_button_active");
 	ssParam.confirmFlag = 1;
     }
 }
@@ -1522,9 +1597,8 @@ function switchInnerMode(id){
 		}
 	    }
 	}
+	document.getElementById("query_tab_inner_" + id).innerHTML = "table";
 	localStorage[ssParam.pathName + '_sparql_target_' + id] = "inner";
-	document.getElementById("query_tab_inner_" + id).style.backgroundColor = "rgba(255, 255, 255, 0.5)";
-	document.getElementById("query_tab_inner_" + id).style.color = "rgba(127, 127, 127, 1)";
 	ssParam.innerMode[id] = 1;
     }else{
 	if(ssParam.innerMode[id] == 1){
@@ -1532,7 +1606,7 @@ function switchInnerMode(id){
 		document.getElementById("inner_result_table").style.display = "none";
 		document.getElementById("inner_result_json").style.display = "block";
 	    }
-	    document.getElementById("query_tab_inner_" + id).innerHTML = "j";
+	    document.getElementById("query_tab_inner_" + id).innerHTML = "json";
 	    localStorage[ssParam.pathName + '_sparql_target_' + id] = "inner_j";
 	    ssParam.innerMode[id] = 2;
 	}else{
@@ -1543,11 +1617,10 @@ function switchInnerMode(id){
 	    ssParam.resultNode[id].style.display = "none";
 	    let inputNode = document.getElementById("submit_button_" + id);
 	    inputNode.type = "submit";
-	    document.getElementById("query_tab_inner_" + id).innerHTML = "i";
+	    document.getElementById("query_tab_inner_" + id).innerHTML = "endpoint";
 	    localStorage[ssParam.pathName + '_sparql_target_' + id] = "_self";
-	    document.getElementById("query_tab_inner_" + id).style.backgroundColor = "rgba(127, 127, 127, 0.5)";
-	    document.getElementById("query_tab_inner_" + id).style.color = "rgba(255, 255, 255, 1)";
 	    ssParam.innerMode[id] = 0;
+	    if(ssParam.sparqlProxyFlag) switchInnerMode(id);
 	}
     }
 }
@@ -1584,6 +1657,105 @@ function setSubResButton(id){
 function resetDescribeLog(){
     ssParam.describeLog = [];
     ssParam.describeTarget = -1;
+}
+
+function setQueryTabWidth(tabNum){
+    let tab_width = 56;
+    let width = document.getElementById("control_tabs").offsetWidth;
+    if((tabNum + 1) * 62 + 170 > width){
+	tab_width = Math.floor((width - 170) / (tabNum + 1) - 6);
+	if(tab_width < 30) tab_width = 30;
+    }
+    let list = document.getElementsByClassName("query_tab");
+    for(let i in list){
+	if(list[i].id && list[i].id.match(/^query_tab_\d+_query$/)) list[i].style.width = tab_width + "px";
+    }
+}
+
+/// popup clipboard copy
+//////////////////////////////////
+
+function copyStringToClipboard(string){
+    let temp = document.createElement('div');
+    temp.appendChild(document.createElement('pre')).textContent = string;
+    let s = temp.style;
+    s.position = 'fixed';
+    s.left = '-100%';
+    document.body.appendChild(temp);
+    document.getSelection().selectAllChildren(temp);
+    let result = document.execCommand('copy');
+    document.body.removeChild(temp);
+    return result;
+}
+
+function makeSparqlQueryLink(){
+    let textarea = document.getElementsByTagName("textarea")[0];
+    let query = textarea.value;
+    let url = location.href.match(/([^\?]+)/)[1];
+    let string = url + "?query=" + encodeURIComponent(query);
+    if(document.getElementById("autoRunChkBox").checked) string += "&exec=1";
+    return string;
+}
+
+function copyToClipboard(){
+    document.getElementById("popupCopy").style.display = "none";
+    let mode = document.getElementsByName("mode");
+    let string =  document.getElementsByTagName("textarea")[0].value;
+    for(let i = 0; i < mode.length; i++){
+	if(mode[i].checked){
+	    if(mode[i].value == "1") string = makeSparqlQueryLink();
+	    else if(mode[i].value == "2") string = document.getElementById("shortUrlRadio").alt;
+	}
+    }
+    //navigator.clipboard.writeText(string);
+    copyStringToClipboard(string);
+    let icon = document.getElementById("fileIcon");
+    icon.style.display = "inline";
+    let count = 1;
+    let anime = function(){
+	let pos = 200 - (count - 20) ** 1.5;
+	if(count < 20) pos = 200;
+	icon.style.marginLeft = pos + "px";
+	count++;
+	if(count > 57){
+	    clearInterval(timer);
+	    icon.style.display = "none";
+	}
+    }
+    let timer = setInterval(anime, 10);
+}
+
+async function popupCopyForm(){
+    let popup = document.getElementById("popupCopy");
+    if(popup.style.display != "inline"){
+	popup.style.display = "inline";
+	let mode = document.getElementsByName("mode");
+	for(let i = 0; i < mode.length; i++){
+	    if(mode[i].checked && mode[i].value == "2"){
+		setShortUrl();
+		break;
+	    }
+	}
+    }else{
+	popup.style.display = "none";
+    }
+}
+
+async function setShortUrl(){
+    let string = makeSparqlQueryLink();
+    let json = await fetch("https://is.gd/create.php?format=json&url=" + encodeURIComponent(string)).then(res=>res.json());
+    document.getElementById("shortUrlRadio").alt = json.shorturl;
+}
+
+function showAutoRunBox(f){
+    if(f) document.getElementById("autorun").style.display = "inline";
+    else document.getElementById("autorun").style.display = "none";
+    if(f == 2 && !document.getElementById("shortUrlRadio").alt) setShortUrl();
+}
+
+function hidePopupCopyForm() {
+    let popup = document.getElementById("popupCopy");
+    if(popup.style.display = "inline") popup.style.display = "none";
 }
 
 /// command
@@ -1686,7 +1858,7 @@ function setDefaultSparqlTerm() {
 }
 
 function setDefaultPrefix() {
-    return ["rdf:", "yago:", "foaf:", "rdfs:", "dbo:", "dbp:", "gr:", "dc:", "spacerel:", "owl:", "skos:", "geo:", "dcat:", "xsd:", "ont:", "xtypes:", "qb:", "sioc:", "onto:", "org:", "sio:", "skos:", "dct:", "dcterms:", "dcterm:", "void:", "obo:", "prov:", "dbpedia:"];
+    return ["rdf:", "yago:", "foaf:", "rdfs:", "dbo:", "dbp:", "gr:", "dc:", "spacerel:", "owl:", "skos:", "geo:", "dcat:", "xsd:", "ont:", "xtypes:", "qb:", "sioc:", "onto:", "org:", "sio:", "dct:", "dcterms:", "dcterm:", "void:", "obo:", "prov:", "dbpedia:"];
 }
 
 function setDefaultUri(){
