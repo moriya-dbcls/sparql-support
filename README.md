@@ -5,6 +5,7 @@
 
 * [Reference](https://sparql-support.dbcls.jp/sparql-support.html)
 
+
 ## Development
 
 ```

@@ -1,27 +1,18 @@
-/* 'FontAwesome' https://weloveiconfonts.com/ */
-@import url(https://weloveiconfonts.com/api/?family=fontawesome);
-[class*="fontawesome-"]:before {
-    font-family: 'FontAwesome', sans-serif;
-}
-
 ul.cm-ss_query_tab_list {
-    position: relative;
-    top: 1px;
-    right: -5px;
+    position: absolute;
+    top: 5px;
+    right: 10px;
     margin: 0px;
     padding: 0px;
-    line-height: 18px;
+    line-height: 14px;
     z-index: 2;
     display: inline;
-    float: right;
 }
 
 ul.cm-ss_query_tab_confirm {
     position: absolute;
-    top: 5px;
-    right: 92px;
-    margin: 0px;
-    padding: 0px;
+    top: 15px;
+    right: 5px;
     z-index: 2;
 }
 
@@ -29,8 +20,8 @@ li.query_tab {
     position: relative;
     list-style: none;
     display: inline-block;
-    width: 56px;
-    margin-right: 4px;
+    width: 50px;
+    margin-right: 2px;
     text-align: center;
     color: rgba(255, 255, 255, 1);
     background-color: rgba(127, 127, 127, 0.5);
@@ -38,49 +29,12 @@ li.query_tab {
     border-style: solid;
     border-width: 1px 1px 1px 1px;
     cursor: default;
-    border-radius: 7px 7px 0px 0px / 7px 7px 0px 0px;
-    font-size: 15px;
-    user-select: none;
-    -moz-user-select: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
-}
-
-li.query_tab_button {
-    color: rgba(127, 127, 127, 1);
-    background-color: rgba(255, 255, 255, 0.5);
-}
-
-li.query_tab_active {
-    color: rgba(127, 127, 127, 1);
-    background-color: rgba(255, 255, 255, 0.5);
-    border-bottom: solid 1px #ffffff;
-}
-
-li.confirm_button {
-    position: relative;
-    list-style: none;
-    display: inline-block;
-    width: 56px;
-    margin-right: 4px;
-    text-align: center;
-    color: rgba(255, 255, 255, 1);
-    background-color: rgba(127, 127, 127, 0.5);
-    border-color: rgba(127, 127, 127, 1);
-    border-style: solid;
-    border-width: 1px 1px 1px 1px;
-    cursor: default;
     border-radius: 5px 5px 5px 5px / 5px 5px 5px 5px;
-    font-size: 15px;
+    font-size: 12px;
     user-select: none;
     -moz-user-select: none;
     -webkit-user-select: none;
     -ms-user-select: none;
-}
-
-li.confirm_button_active {
-    color: rgba(127, 127, 127, 1);
-    background-color: rgba(255, 255, 255, 1);
 }
 
 li.query_tab_hide {
@@ -207,58 +161,4 @@ select.result_download_button{
 
 .CodeMirror-scroll::-webkit-scrollbar {
     display:none;
-}
-
-div.control_tabs {
-    padding: 0px 0px 0px 0px;
-    margin: 0px 0px 0px 0px;
-}
-
-div.clipboard_ctrl {
-    padding: 0px 0px 0px 0px;
-    margin: 0px 0px 0px 0px;
-}
-
-#popupCopy {
-    display: none;
-    margin-left:10px;
-    font-size: 14px;
-    color: rgba(127, 127, 127, 1);
-}
-
-#copyIcon {
-    font-size:18px;
-    display:inline;
-    cursor:pointer;
-}
-
-input#copyButton {
-    position: relative;
-    list-style: none;
-    display: inline-block;
-    width: 150px;
-    margin-right: 4px;
-    text-align: center;
-    color: rgba(127, 127, 127, 1);
-    background-color: rgba(255, 255, 255, 1);
-    border-color: rgba(127, 127, 127, 1);
-    border-style: solid;
-    border-width: 1px 1px 1px 1px;
-    cursor: default;
-    border-radius: 5px 5px 5px 5px / 5px 5px 5px 5px;
-    font-size: 15px;
-    user-select: none;
-    -moz-user-select: none;
-    -webkit-user-select: none;
-    -ms-user-select: none;
-}
-
-#fileIcon {
-    font-size:18px;
-    display:none;
-    margin-left:100px;
-}
-
-.bottom_line {
-      border-bottom: solid #cccccc 2px;
 }
