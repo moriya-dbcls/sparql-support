@@ -205,6 +205,12 @@ function mouseUp(cm, id) {
 	cm.focus();
 	ssParam.queryTabFlag = false;
     }
+    let tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
+    if(ssParam.codeMirrorDiv[id].offsetWidth - ssParam.textareaWidthDelta != ssParam.ctrlTabsDiv[id].offsetWidth){
+	ssParam.ctrlTabsDiv[id].style.width = ssParam.codeMirrorDiv[id].offsetWidth - ssParam.textareaWidthDelta + "px";
+	console.log( ssParam.ctrlTabsDiv[id].offsetWidth);
+	setQueryTabWidth(tabNum);
+    }
 }
 
 function mouseMove(cm, e, id) {
@@ -1014,7 +1020,7 @@ async function innerModeRunQuery(queryTab, id, describe){
     
     //// run fetch
     try{
-	let res = await timeout(1800000, fetch(endpoint, options)).then(handleResponse);
+	let res = await timeout(600000, fetch(endpoint, options)).then(handleResponse);
 	if(res.error){
 	    outError(res, runId);
 	}else{
@@ -1047,6 +1053,7 @@ function initDiv(cm, id){
 	ssParam.job = {};
 	ssParam.results = {};
 	ssParam.dlResults = {};
+	ssParam.ctrlTabsDiv = {};
     }
 
     // check on SPARQL-proxy
@@ -1076,6 +1083,7 @@ function initDiv(cm, id){
     let controlNode = parentNode.insertBefore(newNode, codeMirrorDiv)
     controlNode.className = "control_tabs";
     controlNode.id = "control_tabs";
+    ssParam.ctrlTabsDiv[id] = controlNode;
     
     // copy to clipboard div
     newNode = document.createElement("div")
@@ -1142,6 +1150,7 @@ function initDiv(cm, id){
     codeMirrorDiv.style.fontFamily = baseStyle.fontFamily;
     codeMirrorDiv.style.lineHeight = baseStyle.lineHeight;
     codeMirrorDiv.style.resize = 'both';
+    ssParam.textareaWidthDelta = codeMirrorDiv.offsetWidth - areaWidth;
     // for chrome default
     if(parseInt(baseStyle.fontSize.replace("px", "")) < 16) codeMirrorDiv.style.fontSize = "16px" ;
     if(baseStyle.fontFamily != "monospace" && baseStyle.fontFamily != "Courier" && baseStyle.fontFamily != "Consolas" && baseStyle.fontFamily != "Monaco") codeMirrorDiv.style.fontFamily = "monospace, Courier, Consolas, Monaco";

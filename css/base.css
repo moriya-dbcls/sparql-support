@@ -200,9 +200,10 @@ li.cm-ss_subres_li_invalid {
 }
 
 select.result_download_button{
-    position: absolute;
-    top: 5px;
+    position: relative;
+    top: -10px;
     right: 10px;
+    float: right;
 }
 
 .CodeMirror-scroll::-webkit-scrollbar {
