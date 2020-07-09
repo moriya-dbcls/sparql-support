@@ -578,6 +578,7 @@ async function innerModeRunQuery(queryTab, id, describe){
     //// loading loop
     let loadingVis = function(runId, id){
 	let runTab = ssParam.job[runId];
+	let selTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
 	if(ssParam.color.q == runTab || ssParam.color.q == false){
 	    if(ssParam.color.q == false) ssParam.color.q = runTab;
 	    if(ssParam.color.f){
@@ -596,13 +597,32 @@ async function innerModeRunQuery(queryTab, id, describe){
 	}
 	if(document.getElementById("query_tab_" + runTab + "_" + id)){
 	    document.getElementById("query_tab_" + runTab + "_" + id).style.borderColor = "rgba(255," + ssParam.color.n + ",63,0.7)";
-	}else if(document.getElementById("slsLoading_" + id)){ // for SPARQList support
-	    let icon = document.getElementById("slsLoading_" + id);
-	    if(ssParam.rotate === undefined) ssParam.rotate = 360;
-	    ssParam.rotate -= 5;
-	    if(ssParam.rotate < 0) ssParam.rotate += 360;
-	    icon.style.visibility = "visible";
-	    icon.style.transform = "rotate(" + ssParam.rotate + "deg)";
+
+	    if(runTab == selTab
+	       && !document.getElementById("loadingIcon_" + runTab + "_" + id)
+	       && !document.getElementById("slsLoading_" + id)){ 	// for SPARQList support id
+		console.log("loadingIcon_" + runTab + "_" + id);
+		let loadingIcon = document.createElement("div");
+		loadingIcon.style.width = "24px";
+		loadingIcon.style.height = "24px";
+		loadingIcon.style.border = "solid 8px #999999";
+		loadingIcon.style.borderRight = "solid 8px #99ccff";
+		loadingIcon.style.borderRadius = "20px";
+		loadingIcon.style.margin = "20px"; 
+		loadingIcon.setAttribute("id", "loadingIcon_" + runTab + "_" + id); 
+		ssParam.resultNode[id].innerHTML = "";
+		ssParam.resultNode[id].appendChild(loadingIcon);
+	    }
+	    
+	    let icon = document.getElementById("loadingIcon_" + runTab + "_" + id);
+	    if(document.getElementById("slsLoading_" + id)) icon = document.getElementById("slsLoading_" + id); 	// for SPARQList support id
+	    if(icon){
+		if(ssParam.rotate === undefined) ssParam.rotate = 360;
+		ssParam.rotate -= 5;
+		if(ssParam.rotate < 0) ssParam.rotate += 360;
+		icon.style.visibility = "visible";
+		icon.style.transform = "rotate(" + ssParam.rotate + "deg)";
+	    }
 	}
     }
 
