@@ -609,6 +609,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 		loadingIcon.style.borderRight = "solid 8px #99ccff";
 		loadingIcon.style.borderRadius = "20px";
 		loadingIcon.style.margin = "20px"; 
+		loadingIcon.style.boxSizing = "content-box";
 		loadingIcon.setAttribute("id", "loadingIcon_" + runTab + "_" + id); 
 		ssParam.resultNode[id].innerHTML = "";
 		ssParam.resultNode[id].appendChild(loadingIcon);
