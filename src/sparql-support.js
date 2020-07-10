@@ -598,7 +598,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 	if(document.getElementById("query_tab_" + runTab + "_" + id)){
 	    document.getElementById("query_tab_" + runTab + "_" + id).style.borderColor = "rgba(255," + ssParam.color.n + ",63,0.7)";
 
-	    if(runTab == selTab
+	    if(runTab == selTab 
 	       && !document.getElementById("loadingIcon_" + runTab + "_" + id)
 	       && !document.getElementById("slsLoading_" + id)){ 	// for SPARQList support id
 		console.log("loadingIcon_" + runTab + "_" + id);
