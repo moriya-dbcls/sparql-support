@@ -610,9 +610,14 @@ async function innerModeRunQuery(queryTab, id, describe){
 		loadingIcon.style.borderRadius = "20px";
 		loadingIcon.style.margin = "20px"; 
 		loadingIcon.style.boxSizing = "content-box";
-		loadingIcon.setAttribute("id", "loadingIcon_" + runTab + "_" + id); 
-		ssParam.resultNode[id].innerHTML = "";
-		ssParam.resultNode[id].appendChild(loadingIcon);
+		loadingIcon.setAttribute("id", "loadingIcon_" + runTab + "_" + id);
+		if(!describe){
+		    ssParam.resultNode[id].innerHTML = "";
+		    ssParam.resultNode[id].appendChild(loadingIcon);
+		}else{
+		    ssParam.subResNode[id].innerHTML = "";
+		    ssParam.subResNode[id].appendChild(loadingIcon);
+		}
 	    }
 	    
 	    let icon = document.getElementById("loadingIcon_" + runTab + "_" + id);
