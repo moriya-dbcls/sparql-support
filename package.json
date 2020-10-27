@@ -13,7 +13,7 @@
   "jsnext:main": "src/sparql-support.js",
   "scripts": {
     "build": "rollup -c",
-    "prepublish": "npm run build"
+    "prepare": "npm run build"
   },
   "devDependencies": {
     "rollup": "^1.1.0",
