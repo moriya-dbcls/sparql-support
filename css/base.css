@@ -135,6 +135,7 @@ div#inner_result {
 table#inner_result_table td {
     font-size: 14px;
     padding: 0px 10px 0px 10px;
+    position: relative;
 }
 
 table#inner_result_table td a{
@@ -165,6 +166,22 @@ p.inner_result_sub_title {
     margin: 6px 0px 0px 10px;
     color: #888888;
     font-weight: bold;
+}
+
+span#popup_datatype {
+    position: absolute;
+    padding: 3px 5px 3px 5px;
+    background-color: #ffffff;
+    border: solid 1px #888888;
+    color: #555555;
+    font-size: 12px;
+    line-height: 12px;
+    z-index: 99;
+}
+
+span.string_lang {
+    color: #888888;
+    font-size: 14px;
 }
 
 ul.cm-ss_subres_button {
