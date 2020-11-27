@@ -34,7 +34,7 @@ li.query_tab {
     text-align: center;
     color: rgba(255, 255, 255, 1);
     background-color: rgba(127, 127, 127, 0.5);
-    border-color: rgba(127, 127, 127, 0.5);
+    border-color: rgb(96, 96, 96);
     border-style: solid;
     border-width: 1px 1px 1px 1px;
     cursor: default;
