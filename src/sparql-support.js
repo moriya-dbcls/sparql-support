@@ -35,13 +35,13 @@ CodeMirror.defineOption("sparqlSupportQueries", false, function(cm, id) {
       value: typeof id == "string" ? id : "default",
       mousedown: function(e) { mouseDown(cm, e, id); },
       mouseup: function() { mouseUp(cm, id); },
-      mousemove: function(e) { mouseMove(cm, e, id); }
+      mousemove: function(e) { mouseMove(cm, e, id); },
+      focus: function() { initQueryTabs(cm, id); }
     };
-    // CodeMirror.on(cm.getWrapperElement(), "mousedown", data.mousedown);
-    // CodeMirror.on(cm.getWrapperElement(), "mousemove", data.mousemove);
     document.addEventListener("mousedown", data.mousedown, false);
     document.addEventListener("mousemove", data.mousemove, false);
     window.addEventListener ("mouseup", data.mouseup, false);
+    window.addEventListener("focus", data.focus, false);
 
     initDivQueries(cm, id);
   }
@@ -56,7 +56,6 @@ CodeMirror.defineOption("sparqlSupportInnerMode", false, function(cm, id) {
       mousedown: function(e) { mouseDownInner(e, id); }
     };
     document.addEventListener("click", data.mousedown, false);
-    //  CodeMirror.on(cm.getWrapperElement(), "mousedown", data.mousedown);
 
     initDivInner(cm, id);
   }
