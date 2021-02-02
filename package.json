@@ -1,6 +1,6 @@
 {
   "name": "sparql-support",
-  "version": "0.14.2",
+  "version": "0.14.3",
   "description": "SPARQL support is the addon of the CodeMirror to support editing SPARQL queries in a textarea.",
   "author": "Yuki Moriya (DBCLS)",
   "license": "MIT",
