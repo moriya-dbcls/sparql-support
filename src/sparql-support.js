@@ -164,7 +164,7 @@ let ssParam = {
     ssParam.dragFlag = false;
     ssParam.confirmBox.style.display = "none";
     if (!e.target.className.match("copy_popup_form")) hidePopupCopyForm();
-    if (e.target.className.match("query_tab")) {
+    if (e.target.classList.contains("query_tab")) {
       if (e.target.id == "query_tab_plus_" + id) {
 	addTab(cm, id);
       } else if (e.target.id == "query_tab_minus_" + id) {
