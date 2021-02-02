@@ -1,8 +1,4 @@
-/* 'FontAwesome' https://weloveiconfonts.com/ */
-@import url(https://weloveiconfonts.com/api/?family=fontawesome);
-[class*="fontawesome-"]:before {
-    font-family: 'FontAwesome', sans-serif;
-}
+@import url(https://maxcdn.bootstrapcdn.com/font-awesome/3.2.1/css/font-awesome.min.css);
 
 ul.cm-ss_query_tab_list {
     position: relative;

@@ -1134,7 +1134,7 @@ let ssParam = {
     if ((ssParam.mixedContent == 1 && location.protocol == "https:" && endpoint.match(/^http:/)) || ssParam.temporary_proxy) {
       options.body += "&endpoint=" + encodeURIComponent(endpoint);
       original_endpoint = endpoint;
-      endpoint = "https://sparql-support.dbcls.jp/api/relay";
+      endpoint = location.protocol + "//sparql-support.dbcls.jp/api/relay";
     }
 
     // set timeout of fetch (https://stackoverflow.com/questions/46946380/fetch-api-request-timeout/46946573#46946573)
@@ -1446,7 +1446,7 @@ let ssParam = {
     if (!id.match(/^slsTa_/)) {  // if not SPARQList
       clipboardNode.style.height = "24px";
       clipboardNode.innerHTML = `
-          <div class="fontawesome-paste copy_popup_form" id="copyIcon"></div>
+          <div class="icon-paste copy_popup_form" id="copyIcon"></div>
 	  <p id="popupCopy" class="copy_popup_form">
 	    <input type="button" class="button copy_popup_form" id="copyButton" value="copy to clipboard">
 	    <span class="bottom_line copy_popup_form">
@@ -1456,7 +1456,7 @@ let ssParam = {
 	      <span id="autorun" style="margin-right:30px;" class="copy_popup_form"><input type="checkbox" class="copy_popup_form" id="autoRunChkBox" value="1"> auto run </span>
 	    </span>
 	  </p>
-	  <span class="fontawesome-file-alt" id="fileIcon"></span>`;
+	  <span class="icon-file-alt" id="fileIcon"></span>`;
       document.getElementById("copyIcon").onclick = function(){ popupCopyForm(); };
       document.getElementById("copyButton").onclick = function(){ copyToClipboard(); };
       document.getElementById("rawQueryRadio").onclick = function(){ showAutoRunBox(0); };
