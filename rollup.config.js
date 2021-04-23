@@ -5,6 +5,7 @@ const {version} = require('./package');
 export default [
   'sparql-support.js',
   'sparql.js',
+  'sparql-fold.js',
 ].map((filename) => ({
   input: `src/${filename}`,
   output: {

@@ -192,6 +192,10 @@ function mouseDown(cm, e, id) {
     if (e.target.id == "query_tab_remove_" + id) {
       removeTabRun(cm, id);
     }
+  } else if (e.target.classList.contains("CodeMirror-foldgutter-open")) {
+    ssParam.fold = true;
+  } else if (e.target.classList.contains("CodeMirror-foldgutter-folded")) {
+    ssParam.fold = false;
   }
 }
 
@@ -267,6 +271,15 @@ function setCmDiv(cm, id){
   cm.setValue(text);
   cm.focus();
   setFormAction(cm, id, text);
+  if (ssParam.fold) {
+    let lines = text.split(/\n/);
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].match(/^PREFIX/i)) {
+        cm.foldCode(CodeMirror.Pos(i, 0));
+        break;
+      }
+    }
+  }
 }
 
 /// completion
