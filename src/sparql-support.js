@@ -275,7 +275,7 @@ function setCmDiv(cm, id){
     let lines = text.split(/\n/);
     for (let i = 0; i < lines.length; i++) {
       if (lines[i].match(/^PREFIX/i)) {
-        cm.foldCode(CodeMirror.Pos(i, 0));
+        cm.foldCode(Pos(i, 0));
         break;
       }
     }
