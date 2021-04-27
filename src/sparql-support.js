@@ -758,7 +758,8 @@ async function innerModeRunQuery(queryTab, id, describe){
     let resDiv = document.createElement("div");
     let resTime = document.createElement("p");
     let sec = Math.round((endTime - startTime) / 100) / 10;
-    if (!describe) resTime.appendChild(document.createTextNode("[ " + res.results.bindings.length + " bindings. -- " + sec + " sec. ]"));
+    let ask = false;
+    if (res.boolean === true || res.boolean === false) ask = true;
     resTime.className = "inner_result_time";
     resDiv.appendChild(resTime);
     if (!describe) mkDlButton(resDiv, ssParam.activeTab, id);
@@ -773,16 +774,18 @@ async function innerModeRunQuery(queryTab, id, describe){
     resTable.id = "inner_result_table";
     let resTr = document.createElement("tr");
     let resTh, resTd, resInput;
-    for (let i = 0; i < vars.length; i++) {
-      let regex = new RegExp("\\s\\$" + vars[i] + "\\s");
-      resTh = document.createElement("th");
-      let tmp = decodeURI(escape(vars[i]));
-      if (searchPredicate && vars[i] == "__p__") tmp = "??";
-      resTh.appendChild(document.createTextNode(tmp));
-      resTr.appendChild(resTh);
+    if (!ask) {
+      for (let i = 0; i < vars.length; i++) {
+	let regex = new RegExp("\\s\\$" + vars[i] + "\\s");
+	resTh = document.createElement("th");
+	let tmp = decodeURI(escape(vars[i]));
+	if (searchPredicate && vars[i] == "__p__") tmp = "??";
+	resTh.appendChild(document.createTextNode(tmp));
+	resTr.appendChild(resTh);
+      }
+      resTable.appendChild(resTr);
     }
-    resTable.appendChild(resTr);
-
+    
     let displayDatatype = function(element, datatype){
       let popupSpan = document.createElement("span");
       popupSpan.id = "popup_datatype";
@@ -883,6 +886,10 @@ async function innerModeRunQuery(queryTab, id, describe){
       }
       resTime.appendChild(document.createTextNode("[ " + count + " triples. -- " + sec + " sec. ]"));
 
+    } else if (ask) { // ASK
+      resDiv.appendChild(document.createTextNode(res.boolean));
+      resTime.appendChild(document.createTextNode("[ " + sec + " sec. ]"));
+
     } else {  // sparql result (SPARQL-results+json)
       for (let i = 0; i < res.results.bindings.length; i++) {
 	resTr = document.createElement("tr");
@@ -936,6 +943,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 	}
 	resTable.appendChild(resTr);
       }
+      resTime.appendChild(document.createTextNode("[ " + res.results.bindings.length + " bindings. -- " + sec + " sec. ]"));
     }
     if (ssParam.innerMode[id] == 2) resTable.style.display = "none";
     resDiv.appendChild(resTable);

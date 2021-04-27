@@ -274,5 +274,9 @@ input#copyButton {
 }
 
 .bottom_line {
-      border-bottom: solid #cccccc 2px;
+    border-bottom: solid #cccccc 2px;
+}
+
+.cm-matchhighlight {
+    background-color: #d6f4ff;
 }
