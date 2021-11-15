@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>SPARQL support</title>
+    <script type="text/javascript" src="./node_modules/codemirror/lib/codemirror.js"></script>
+    <script type="text/javascript" src="./node_modules/codemirror/addon/edit/matchbrackets.js"></script>
+    <script type="text/javascript" src="./node_modules/codemirror/addon/edit/closebrackets.js"></script>
+    <script type="text/javascript" src="./node_modules/codemirror/addon/fold/foldcode.js"></script>
+    <script type="text/javascript" src="./node_modules/codemirror/addon/fold/foldgutter.js"></script>
+    <script type="text/javascript" src="./node_modules/codemirror/addon/search/match-highlighter.js"></script>
+    <link rel="stylesheet" type="text/css" href="./node_modules/codemirror/addon/fold/foldgutter.css">
+    <link rel="stylesheet" type="text/css" href="./node_modules/codemirror/lib/codemirror.css">
+
+    <script type="text/javascript" src="./js/sparql-support.js"></script>
+    <script type="text/javascript" src="./js/sparql.js"></script>
+    <script type="text/javascript" src="./js/sparql-fold.js"></script>
+
+    <link rel="stylesheet" type="text/css" href="./css/base.css">
+    <style type="text/css">
+      body {
+      padding: 0px 0px 0px 0px;
+      margin: 0px 0px 0px 0px ;
+      font-family: "Hiragino Kaku Gothic ProN", Meiryo, Osaka, sans-serif;
+      }
+      div#head{
+      color: #ffffff;
+      background-color: #86b9d9;
+      margin: 0px 0px 0px 0px;
+      margin-top: 0px;
+      width: 100%;
+      height: 80px;
+      }
+      img#logo{
+      position: relative;
+      top: 20px;
+      float:left;
+      margin:0px 20px 0px 20px;
+      }
+      div#header_r{
+      float: right;
+      text-align: right;
+      margin-right: 0px;
+      }
+      img#poweredbydbcls{
+      margin-top: 12px;
+      }
+      div#main {
+      margin-top: 20px;
+      }
+      div.hr {
+      background-color: #86b9d9;
+      width: 100%;
+      margin-top: 0px;
+      height: 20px;
+      }
+      h1 {
+      font-size: 24px;
+      margin: 0px;
+      padding: 40px 20px 0px 20px;
+      }
+      h2 {
+      font-size: 20px;
+      color: #555555;
+      }
+      h3 {
+      margin-left:20px;
+      font-size: 16px;
+      color: #555555;
+      }
+      a {
+      color: #4886ad;
+      }
+      .ml50 {
+      margin-left: 50px;
+      }
+      .ml100 {
+      margin-left: 100px;
+      }
+      pre {
+      margin: 0px 70px 0px 70px;
+      padding: 10px 30px 10px 30px;
+      font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
+      font-size: 14px;
+      }
+      div#main {
+      width: 100%;
+      }
+      div.form {
+      width: 80%;   
+      margin: 0 auto;  
+      }
+      div.link {
+      margin-top: 40px;
+      margin-bottom: 16px;
+      }
+      form#form {
+      margin-top: 30px;
+      }
+      textarea#query {
+      width: 100%;
+      height: 400px;
+      }
+      input.button {
+      font-size: 20px;
+      margin-bottom: 20px;
+      cursor:pointer;
+      }
+      #dbcls-common-header nav.gnav {
+      margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="head">
+     <h1>SPARQL support</h1>
+    </div>
+    <div id="main">
+
+      <div class="form">
+	<form method="get" id="form">
+	  <textarea id="query" name="query">## endpoint https://dbpedia.org/sparql
+PREFIX dbpedia: <http://dbpedia.org/resource/>
+SELECT DISTINCT *
+WHERE {
+  <http://dbpedia.org/resource/Tokyo> ?p ?o .
+}
+LIMIT 10</textarea>
+	  <br>
+	  <input type="submit" id="submit_query" class="button" value="Run Query" />
+	</form>
+
+	<div class="link" id="foot">
+	  <p style="margin-left: 20px;">
+	    <a href="https://sparql-support.dbcls.jp/sparql-support.html" id="reflink">about SPARQL support</a>
+	  </p>
+	</div>
+      </div>
+
+    </div>
+    
+    <div class="hr"></div>
+    
+      <script language="javascript">
+	
+	if(window.navigator.languages && window.navigator.languages[0] == "ja"){
+	    document.getElementById("reflink").href = "./sparql-support_j.html";
+	}
+        var id = "query";
+	var editor = CodeMirror.fromTextArea(document.getElementById(id), {
+	    mode: "application/sparql-query",
+	    matchBrackets: true,
+	    autoCloseBrackets: true,
+	    lineNumbers: true,
+	    sparqlSupportAutoComp: true,      // Auto completion
+	    sparqlSupportQueries: true,       // Tabbed interface
+	    sparqlSupportInnerMode: true,     // Inner mode
+	    extraKeys: {"Tab": function(instance) { return false; },
+			"Ctrl-Space": function(instance) { return false; },
+			"Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); }},
+	    foldGutter: true,
+	    gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
+	});
+      </script>
+    
+    <script type="text/javascript" src="https://dbcls.rois.ac.jp/DBCLS-common-header-footer/v2/script/common-header-and-footer.js" style="display: block" id="common-header-and-footer__script" data-header-menu-type="deployed" data-show-footer="true" data-show-footer-links="true" data-year="2015"></script>
+    <style>
+#dbcls-common-header nav.gnav {
+     margin-left: 30px;
+}
+    </style>
+      
+  </body>
+</html>
