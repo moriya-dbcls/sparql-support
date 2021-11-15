@@ -11,6 +11,7 @@
 ```
 $ npm install
 ```
+Open index.html in web browser.
 
 ## Release
 
