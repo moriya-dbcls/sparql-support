@@ -172,7 +172,21 @@ span#popup_datatype {
     color: #555555;
     font-size: 12px;
     line-height: 12px;
+    white-space: nowrap;
     z-index: 99;
+}
+
+span#popup_eb_flag {
+    position: absolute;
+    padding: 3px 5px 3px 5px;
+    background-color: #ffffff;
+    border: solid 1px #888888;
+    color: #555555;
+    font-size: 12px;
+    line-height: 12px;
+    white-space: nowrap;
+    display: none;
+    z-index: 100;
 }
 
 span.string_lang {

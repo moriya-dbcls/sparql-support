@@ -42,7 +42,7 @@ CodeMirror.defineOption("sparqlSupportQueries", false, function(cm, id) {
     document.addEventListener("mousemove", data.mousemove, false);
     window.addEventListener ("mouseup", data.mouseup, false);
     window.addEventListener("focus", data.focus, false);
-
+    
     initDivQueries(cm, id);
   }
 });
@@ -53,9 +53,14 @@ CodeMirror.defineOption("sparqlSupportInnerMode", false, function(cm, id) {
   if (id) {
     data = cm.state.selectionPointer = {
       value: typeof id == "string" ? id : "default",
-      mousedown: function(e) { mouseDownInner(e, id); }
+      mousedown: function(e) { mouseDownInner(e, id); },
+      keydown: function(e) { keyDownInner(cm, e, id); },
+      keyup: function(e) { keyUpInner(cm, e, id); }
+
     };
     document.addEventListener("click", data.mousedown, false);
+    document.addEventListener("keydown", data.keydown, false);
+    document.addEventListener("keyup", data.keyup, false);
 
     initDivInner(cm, id);
   }
@@ -73,14 +78,13 @@ let ssParam = {
   sparqlProxyFlag: false
 }
 
-
 /// event
 //////////////////////////////////
 
 function keyDown(cm, e, id){
   let caret = cm.getCursor('anchor');
   //	console.log("'" + e.key + "'" + " " + e.code);
-  if (ssParam.confirmFlag && !e.ctrlKey && e.key != 'Shift') { ssParam.confirmFlag = 0; ssParam.confirmBox.style.display = "none"; }
+  if (ssParam.confirmFlag && !e.ctrlKey && e.key != 'Shift') { ssParam.confirmFlag = 0; ssParam.confirmBox.style.display = "none";}
   if (e.key == 'Tab' || (e.key == ' ' && e.ctrlKey)) {
     cm.indentLine(caret.line);
     caret = cm.getCursor('anchor');
@@ -235,10 +239,20 @@ function mouseDownInner(e, id) {
     innerModeRunQuery(ssParam.activeTab, id);
   } else if (e.target.id == "query_tab_inner_" + id) {
     switchInnerMode(id);
-  } else if (e.target.className == "describe" && e.which == 1) { // left click
-    let uri = decodeURIComponent(e.target.href);
+  } else if (e.target.className == "instance" && e.which == 1) { // left click
+    let node = decodeURIComponent(e.target.innerHTML);
+    if (e.target.alt) node += e.target.alt;
+    if (e.target.href) node = encodeURIComponent(e.target.href);
     e.preventDefault();
-    innerModeRunQuery(ssParam.activeTab, id, uri);
+    if (ssParam.endpointBrowserLink) {
+      let url = "https://sparql-support.dbcls.jp/endpoint-browser.html";
+      window.open(url
+		  + "?endpoint=" + encodeURIComponent(localStorage[ssParam.pathName + '_endpoint_' + id])
+		  + "&node=" + node
+		  + "&exec=1", "_blank");
+    } else if (e.target.href) {
+      innerModeRunQuery(ssParam.activeTab, id, node);
+    }
   } else if (e.target.id == "cm-ss_delete_subres_li") {
     ssParam.subResNode[id].style.display = "none";
     resetDescribeLog();
@@ -252,6 +266,20 @@ function mouseDownInner(e, id) {
     ssParam.describeTarget++;
     setSubResButton(id);
     ssParam.subResNode[id].appendChild(ssParam.describeLog[ssParam.describeTarget]);
+  }
+}
+
+function keyDownInner(cm, e, id){
+  if (e.altKey && document.getElementById("popup_eb_flag")) {
+    document.getElementById("popup_eb_flag").style.display = 'block';
+    ssParam.endpointBrowserLink = true;
+  }
+}
+
+function keyUpInner(cm, e, id){
+  if (document.getElementById("popup_eb_flag")) {
+    ssParam.endpointBrowserLink = false;
+    document.getElementById("popup_eb_flag").style.display = 'none';
   }
 }
 
@@ -275,8 +303,8 @@ function setCmDiv(cm, id){
     let lines = text.split(/\n/);
     for (let i = 0; i < lines.length; i++) {
       if (lines[i].match(/^PREFIX/i)) {
-        cm.foldCode(Pos(i, 0));
-        break;
+	cm.foldCode(Pos(i, 0));
+	break;
       }
     }
   }
@@ -554,7 +582,7 @@ function chkQueryPrefix(id){
       if (words[j].match(/^\w*:/)) {
 	if (words[j].match(/^https*:/)) continue;
 	let prefix = words[j].match(/^(\w*:)/)[1];
-	if (!queryPrefix[prefix]) unknownPrefix[prefix] = 1;
+	if (!queryPrefix[prefix] && prefix != "_:") unknownPrefix[prefix] = 1;
       }
     }
   }
@@ -800,6 +828,28 @@ async function innerModeRunQuery(queryTab, id, describe){
       langSpan.appendChild(document.createTextNode("@" + lang));
       element.appendChild(langSpan);
     }
+    let displayEndpointBrowserLink = function(element){
+      let popupSpan = document.createElement("span");
+      popupSpan.id = "popup_eb_flag";
+      popupSpan.appendChild(document.createTextNode("Endpoint browser"));
+      element.parentNode.appendChild(popupSpan);
+      popupSpan.style.left = (element.offsetLeft + element.offsetWidth + 16) + 'px';
+      popupSpan.style.top = (element.offsetTop - 3) + 'px';
+    }
+    let addMouseEvent = function(element, datatype) {
+      element.onmouseover = function(){
+	displayEndpointBrowserLink(this);
+	if (datatype) {
+	  element.style.cursor = "default";
+	  displayDatatype(this, datatype);
+	}
+      };
+      element.onmouseout = function(){
+	ssParam.endpointBrowserLink = false;
+	if (document.getElementById("popup_eb_flag")) document.getElementById("popup_eb_flag").remove();
+	if (document.getElementById("popup_datatype")) document.getElementById("popup_datatype").remove();
+      };
+    }
     
     if (describe) {  // describe result (JSON-LD)
       let addRow = function(triple){
@@ -812,13 +862,14 @@ async function innerModeRunQuery(queryTab, id, describe){
 	  if (typeof(text) == "string" && text.match(/^https*:\/\//) && describe != text) {
 	    let resA = document.createElement("a");
 	    resA.href = text;
-	    resA.className = "describe";
+	    resA.className = "instance";
 	    for(let key in uri2prefix){
 	      if(uri2prefix.hasOwnProperty(key) && text.match(key)){
 		text = text.replace(key, uri2prefix[key] + ":");
 		break;
 	      }
 	    }
+	    addMouseEvent(resA);
 	    resA.appendChild(document.createTextNode(text));
 	    resTd.appendChild(resA);
 	  } else {
@@ -828,16 +879,10 @@ async function innerModeRunQuery(queryTab, id, describe){
 	    else if (triple[1]["@type"]) datatype = triple[1]["@type"].replace(/http:\/\/www\.w3\.org\/2001\/XMLSchema#/, "xsd:");
 	    if(typeof(text) == "string" && !value["@id"] && (!datatype || (datatype && datatype == "xsd:string"))) text = '"' + text + '"';
 	    let resSpan = document.createElement("span");
+	    resSpan.className = "instance";
 	    resSpan.appendChild(document.createTextNode(text));
-	    if (datatype) {
-	      resSpan.style.cursor = "default";
-	      resSpan.onmouseover = function(){
-		displayDatatype(this, datatype);
-	      };
-	      resSpan.onmouseout = function(){
-		document.getElementById("popup_datatype").remove();
-	      };
-	    }
+	    addMouseEvent(resSpan, datatype);
+	    if (datatype) resSpan.alt = '^^' + datatype;
 	    resTd.appendChild(resSpan);
 	    if (value["@language"]) addLang(resTd, value["@language"]);
 	  }
@@ -915,8 +960,9 @@ async function innerModeRunQuery(queryTab, id, describe){
 	      }
 	      let resA = document.createElement("a");
 	      resA.href = value;
-	      resA.className = "describe";
+	      resA.className = "instance";
 	      resA.appendChild(document.createTextNode(text));
+	      addMouseEvent(resA);
 	      resTd.appendChild(resA);
 	      ssParam.resultTerms.push(term);
 	    } else {
@@ -925,18 +971,15 @@ async function innerModeRunQuery(queryTab, id, describe){
 		ssParam.resultTerms.push("$" + vars[j] + ":" + value);
 	      }
 	      let resSpan = document.createElement("span");
+	      resSpan.className = "instance";
 	      resSpan.appendChild(document.createTextNode(value));
-	      if (datatype) {
-		resSpan.style.cursor = "default";
-		resSpan.onmouseover = function(){
-		  displayDatatype(this, datatype);
-		};
-		resSpan.onmouseout = function(){
-		  document.getElementById("popup_datatype").remove();
-		};
-	      }
+	      if (!type || type != "bnode") addMouseEvent(resSpan, datatype);
 	      resTd.appendChild(resSpan);
-	      if (lang) addLang(resTd, lang);
+	      if (lang) {
+		addLang(resTd, lang);
+		resSpan.alt = '@' + lang;
+	      }
+	      if (datatype) resSpan.alt = '^^' + datatype;
 	    }
 	  }
 	  resTr.appendChild(resTd);
@@ -1041,6 +1084,7 @@ async function innerModeRunQuery(queryTab, id, describe){
   if (lines[0] && lines[0].toLowerCase().match(/^define +sql:select-option +"order"/)) {
     defineLine = true;
   }
+  localStorage[ssParam.pathName + '_endpoint_' + id] = endpoint;
 
   //// edit SPARQL query for multi-line comments
   for (let i = 0; i < lines.length; i++) {
@@ -1110,19 +1154,19 @@ async function innerModeRunQuery(queryTab, id, describe){
 	}
       }
       if (sparqlMustache && (sparqlDoc || sparqlApiMd)){ // for mustache parameters
-        let former = lines[i];
-        let latter = "";
-        while (former.match(/\{\{\w+\}\}/)) {
-          var words = former.match(/(.*)\{\{(\w+)\}\}(.*)/);
-          if (sparqlMustacheParams[words[2]]) {
-            former = words[1] + sparqlMustacheParams[words[2]] + words[3];
-          } else { // skip mustache
-            var words = former.match(/(.*)(\{\{\w+\}\})(.*)/);
-            former = words[1];
-            latter = words[2] + words[3] + latter;
-          }
-        }
-        lines[i] = former + latter;
+	let former = lines[i];
+	let latter = "";
+	while (former.match(/\{\{\w+\}\}/)) {
+	  var words = former.match(/(.*)\{\{(\w+)\}\}(.*)/);
+	  if (sparqlMustacheParams[words[2]]) {
+	    former = words[1] + sparqlMustacheParams[words[2]] + words[3];
+	  } else { // skip mustache
+	    var words = former.match(/(.*)(\{\{\w+\}\})(.*)/);
+	    former = words[1];
+	    latter = words[2] + words[3] + latter;
+	  }
+	}
+	lines[i] = former + latter;
       }
       if (searchPredicate && f == 1) { // for predicate seaech
 	if (searchPredicate && lines[i].toUpperCase().match(/\s*SELECT /)){ lines[i] = "\nSELECT DISTINCT ?__p__ (SAMPLE(?__o__) AS ?sample)"; }
@@ -2058,7 +2102,7 @@ function setDefaultUri(){
 async function setPrefixUri(cm, caret, id, prefix, flag) {
   // let url = "https://prefix.cc/" + prefix + ".file.json";
   let url = location.protocol + "//sparql-support.dbcls.jp/api/relay?url=http://prefix.cc/" + prefix + ".file.json";
-  let options = { method: 'GET' };
+  let options = { method: 'GET'};
   let res = await fetch(url, options).then(res=>res.json());
   let prefixes = prefix.split(",");
   for (let i = 0; i < prefixes.length; i++) {
