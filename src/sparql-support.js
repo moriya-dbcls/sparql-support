@@ -251,7 +251,7 @@ function mouseDownInner(e, id) {
 		  + "&node=" + node
 		  + "&exec=1", "_blank");
     } else if (e.target.href) {
-      innerModeRunQuery(ssParam.activeTab, id, node);
+      innerModeRunQuery(ssParam.activeTab, id, decodeURIComponent(node));
     }
   } else if (e.target.id == "cm-ss_delete_subres_li") {
     ssParam.subResNode[id].style.display = "none";
