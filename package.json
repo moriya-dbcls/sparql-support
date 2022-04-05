@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": "https://github.com/moriya-dbcls/sparql-support.git",
   "engines": {
-    "node": ">= 10.0"
+    "node": ">= 14.0"
   },
   "main": "js/sparql-support.js",
   "browser": "js/sparql-support.js",
