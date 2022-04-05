@@ -907,12 +907,15 @@ async function innerModeRunQuery(queryTab, id, describe){
 	  }
 	  if (item.match(/^\@/)) continue;
 	  let p = item;
-	  if (graph["@context"]) {
-	    if (graph["@context"][p]) p = graph["@context"][p];
+	  if (graph["@context"] || res["@context"]) {
+            let context = {};
+	    if (graph["@context"]) context = Object.assign(context, graph["@context"]);
+	    else if (res["@context"]) context = Object.assign(context, res["@context"]);
+	    if (context[p]) p = context[p];
 	    else {
-	      for (let key in graph["@context"]) {
-		if (graph["@context"][key]["@id"] == p){
-		  p = graph["@context"][key];
+	      for (let key in context) {
+		if (context[key]["@id"] == p){
+		  p = context[key];
 		  break;
 		}
 	      }
