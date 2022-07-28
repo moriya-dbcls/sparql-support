@@ -159,7 +159,8 @@ LIMIT 10</textarea>
 			"Ctrl-Space": function(instance) { return false; },
 			"Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); }},
 	    foldGutter: true,
-	    gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
+	    gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"],
+            highlightSelectionMatches: {showToken: /[\w:]/}
 	});
       </script>
     
