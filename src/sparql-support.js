@@ -18,10 +18,16 @@ CodeMirror.defineOption("sparqlSupportAutoComp", false, function(cm, id) {
     data = cm.state.selectionPointer = {
       value: typeof id == "string" ? id : "default",
       keydown: function(e) { keyDown(cm, e, id); },
-      keyup: function(e) { keyUp(cm, e, id); }
+      keyup: function(e) { keyUp(cm, e, id); },
+      leftclick: function(e) { leftClick(cm, e, id); },
+      rightclick: function(e) { rightClick(cm, e, id); },
+      scroll: function(e) { scrollEditor(cm, e, id); }
     };
     CodeMirror.on(cm.getWrapperElement(), "keydown", data.keydown);
     CodeMirror.on(cm.getWrapperElement(), "keyup", data.keyup);
+    document.addEventListener("click", data.leftclick, false);
+    document.addEventListener("contextmenu", data.rightclick, false);
+    document.addEventListener("wheel", data.scroll, false);
 
     initDiv(cm, id);
   }
@@ -203,6 +209,36 @@ function mouseDown(cm, e, id) {
   }
 }
 
+function leftClick(cm, e, id) {
+  if (ssParam.debugDiv.style.display == "block" && !e.target.classList.contains("debug")) {
+    ssParam.debugDiv.style.display = "none";
+  }
+}
+
+function rightClick(cm, e, id) {
+  let sparqlQuery = ssParam.textarea[id].value;
+  if (sparqlQuery.match(/#\s*@debug\s+true/)) {
+    ssParam.debugLimit = 1;
+    if (sparqlQuery.match(/#\s*@debug\s+true\s+\d/)) ssParam.debugLimit = sparqlQuery.match(/#\s*@debug\s+true\s+(\d+)/)[1];
+    let selectText = window.getSelection().toString();
+    if (e.target.classList.contains("cm-string-2") || selectText) {
+      e.preventDefault();
+      ssParam.debugClickTarget = e.target;
+      ssParam.debugText = e.target.innerHTML;
+      if (selectText) ssParam.debugText = selectText;
+      ssParam.debugDiv.style.display = "block";
+      ssParam.debugDiv.style.top = (ssParam.debugClickTarget.getBoundingClientRect().top - ssParam.codeMirrorDiv[id].getBoundingClientRect().top + 20) + "px";
+      ssParam.debugDiv.style.left = (e.clientX - ssParam.codeMirrorDiv[id].getBoundingClientRect().left + 10) + "px";
+    }
+  }
+}
+
+function scrollEditor(cm, e, id) {
+  if (ssParam.debugDiv.style.display == "block") {
+    ssParam.debugDiv.style.top = (ssParam.debugClickTarget.getBoundingClientRect().top - ssParam.codeMirrorDiv[id].getBoundingClientRect().top + 20) + "px";
+  }
+}
+
 function mouseUp(cm, id) {
   document.getElementById("query_tab_" + ssParam.activeTab + "_" + id).style.left = "0px";
   ssParam.dragFlag = false;
@@ -249,6 +285,7 @@ function mouseDownInner(e, id) {
       window.open(url
 		  + "?endpoint=" + encodeURIComponent(localStorage[ssParam.pathName + '_endpoint_' + id])
 		  + "&node=" + node
+		  + "&limit=100"
 		  + "&exec=1", "_blank");
     } else if (e.target.href) {
       innerModeRunQuery(ssParam.activeTab, id, decodeURIComponent(node));
@@ -602,7 +639,7 @@ function chkQueryPrefix(id){
 /// inner mode
 //////////////////////////////////
 
-async function innerModeRunQuery(queryTab, id, describe){
+async function innerModeRunQuery(queryTab, id, describe, expQuery){
 
   //// loading loop
   let loadingVis = function(runId, id){
@@ -900,7 +937,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 	    let types = [graph["@type"]];
 	    if (Array.isArray(graph["@type"])) types = graph["@type"];
 	    for (let type of types) {
-	      resTable.appendChild(addRow([graph["@id"], "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", {"@id": type}]));
+	      resTable.appendChild(addRow([{"@id": graph["@id"]}, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", {"@id": type}]));
 	      count++;
 	    }
 	    continue;
@@ -908,7 +945,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 	  if (item.match(/^\@/)) continue;
 	  let p = item;
 	  if (graph["@context"] || res["@context"]) {
-            let context = {};
+	    let context = {};
 	    if (graph["@context"]) context = Object.assign(context, graph["@context"]);
 	    else if (res["@context"]) context = Object.assign(context, res["@context"]);
 	    if (context[p]) p = context[p];
@@ -1059,6 +1096,7 @@ async function innerModeRunQuery(queryTab, id, describe){
 
   //// construct SPARQL query
   let sparqlQuery = ssParam.textarea[id].value;
+  if (expQuery) sparqlQuery = expQuery;
   sparqlQuery = sparqlQuery.replace(/([\s\.\;])=b(\s)/g, "$1\n=b\n$2").replace(/([\s\.\;])=e(\s)/g, "$1\n=e\n$2").replace(/([\s\.\;])=begin(\s)/g, "$1\n=begin\n$2").replace(/([\s\.\;])=end(\s)/g, "$1\n=end\n$2").replace(/\n\s*\n/g, "\n"); // for multi-line coment
   let lines = sparqlQuery.split(/\n/);
   let searchPredicate = false;
@@ -1539,6 +1577,36 @@ function initDiv(cm, id){
     document.getElementById("shortUrlRadio").onclick = function(){ showAutoRunBox(2); };
     document.getElementById("autoRunChkBox").onclick = function(){ setShortUrl(); };
   }
+
+  // popuo div for debug mode
+  let debugDiv = document.createElement("div");
+  let commandUl = document.createElement("ul");
+  let debugCommands = [
+    { command: "subject", label: " &gt; Subject"},
+    { command: "predicate", label: " &gt; Predicate"},
+    { command: "object", label: " &gt; Object"},
+    { command: "triple", label: " &gt; Triple patern"}
+  ];
+  for (let d of debugCommands) {
+    let commandLi = document.createElement("li");
+    commandLi.innerHTML = d.label;
+    commandLi.command = d.command;
+    commandLi.className = "debug_command debug";
+    commandLi.addEventListener("mouseover", function(e) { e.target.classList.add("debug_command_hover");})
+    commandLi.addEventListener("mouseout", function(e) { e.target.classList.remove("debug_command_hover");})
+    commandLi.addEventListener("click", function(e) {
+      debugDiv.style.display = "none";
+      debugQuery(e.target.command);
+    })
+    commandUl.appendChild(commandLi);
+  }
+  codeMirrorDiv.appendChild(debugDiv);
+  debugDiv.id = "debug_command_div";
+  debugDiv.innerHTML = "Search as";
+  debugDiv.className = "debug_popup debug";
+  debugDiv.appendChild(commandUl);
+  commandUl.className = "debug_command debug";
+  ssParam.debugDiv = debugDiv;
   
   saveCode(cm, id);
 }
@@ -2060,6 +2128,37 @@ function ssCommand(cm, id, caret, line){
   }
 }
 
+/// debug command
+//////////////////////////////////
+
+function debugQuery(command) {
+  let sparqlQuery = ssParam.textarea[id].value;
+  let debugText = ssParam.debugText;
+  if (command == "triple") {
+    if (debugText.match(/[;\.]\s*$/)) debugText = debugText.replace(/[;\.]\s*$/, "");
+  }
+  let lines = sparqlQuery.split(/\n/);
+  let expQuery = "";
+  for (let line of lines) {
+    if (line.toUpperCase().match(/^\s*SELECT /)) {
+      expQuery += "SELECT *\n";
+    } else if (line.toUpperCase().match(/^\s*WHERE /)) {
+      expQuery += "WHERE {\n  ";
+      if (command == "subject") expQuery += debugText + " ?p ?o";
+      else if (command == "predicate") expQuery += "?s " + debugText + "?o";
+      else if (command == "object") expQuery += "?s ?p " + debugText;
+      else if (command == "triple") expQuery += debugText;
+      expQuery += " .\n}\nLIMIT " + ssParam.debugLimit;
+      break;
+    } else {
+      expQuery += line + "\n";
+    }
+  }
+  console.log(expQuery);
+
+  innerModeRunQuery(ssParam.activeTab, id, 0, expQuery);
+}
+
 /// default params
 //////////////////////////////////
 
@@ -2188,3 +2287,4 @@ function isJson(arg){
     return false;
   }
 }
+

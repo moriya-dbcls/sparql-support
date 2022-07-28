@@ -294,3 +294,33 @@ input#copyButton {
 .cm-matchhighlight {
     background-color: #d6f4ff;
 }
+
+div.debug_popup {
+    display: none;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    background-color: #e6e6e6;
+    color: #666666;
+    margin: 0px;
+    padding: 5px 0px 0px 10px;
+    border: solid 1px #888888;
+    z-index:2;
+}
+
+ul.debug_command {
+    margin: 0px;
+    padding: 0px;
+}
+
+li.debug_command {
+    position: relative;
+    list-style: none;
+    padding: 2px 5px 2px 5px;
+    cursor:pointer;
+}
+
+li.debug_command_hover {
+    background-color: #888888;
+    color: #ffffff;
+}
