@@ -1585,7 +1585,7 @@ function initDiv(cm, id){
     { command: "subject", label: " &gt; Subject"},
     { command: "predicate", label: " &gt; Predicate"},
     { command: "object", label: " &gt; Object"},
-    { command: "triple", label: " &gt; Triple patern"}
+    { command: "triple", label: " &gt; Triple pattern"}
   ];
   for (let d of debugCommands) {
     let commandLi = document.createElement("li");
