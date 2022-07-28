@@ -1596,7 +1596,7 @@ function initDiv(cm, id){
     commandLi.addEventListener("mouseout", function(e) { e.target.classList.remove("debug_command_hover");})
     commandLi.addEventListener("click", function(e) {
       debugDiv.style.display = "none";
-      debugQuery(e.target.command);
+      debugQuery(id, e.target.command);
     })
     commandUl.appendChild(commandLi);
   }
@@ -2131,7 +2131,7 @@ function ssCommand(cm, id, caret, line){
 /// debug command
 //////////////////////////////////
 
-function debugQuery(command) {
+function debugQuery(id, command) {
   let sparqlQuery = ssParam.textarea[id].value;
   let debugText = ssParam.debugText;
   if (command == "triple") {
