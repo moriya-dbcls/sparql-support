@@ -2145,7 +2145,7 @@ function debugQuery(id, command) {
     } else if (line.toUpperCase().match(/^\s*WHERE /)) {
       expQuery += "WHERE {\n  ";
       if (command == "subject") expQuery += debugText + " ?p ?o";
-      else if (command == "predicate") expQuery += "?s " + debugText + "?o";
+      else if (command == "predicate") expQuery += "?s " + debugText + " ?o";
       else if (command == "object") expQuery += "?s ?p " + debugText;
       else if (command == "triple") expQuery += debugText;
       expQuery += " .\n}\nLIMIT " + ssParam.debugLimit;
