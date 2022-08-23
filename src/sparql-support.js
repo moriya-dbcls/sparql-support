@@ -2135,7 +2135,19 @@ function debugQuery(id, command) {
   let sparqlQuery = ssParam.textarea[id].value;
   let debugText = ssParam.debugText;
   if (command == "triple") {
+    // remove last semicolon or period
     if (debugText.match(/[;\.]\s*$/)) debugText = debugText.replace(/[;\.]\s*$/, "");
+    // add close blank brackets
+    if ((debugText.match(/\[/g) || []).length > (debugText.match( /\]/g ) || [] ).length) {
+      let delta = (debugText.match(/\[/g) || []).length - (debugText.match( /\]/g ) || [] ).length;
+      let brackets = "";
+      debugText += "\n";
+      for(let i = 0; i < delta; i++) { debugText += "]"; }
+    }
+    // add subject
+    if (debugText.replace(/ #/, "\n#").replace(/\[\s/, " ?blank ;\n").replace(/\s*[;\.]\s*\n[\s\S]*/, "").replace(/ *\/ */g, "/").replace(/^\s*/, "").replace(/\s*$/, "").split(/ +/).length == 2) {
+      debugText = "?s " + debugText;
+    }
   }
   let lines = sparqlQuery.split(/\n/);
   let expQuery = "";
