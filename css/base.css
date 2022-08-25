@@ -305,6 +305,7 @@ div.debug_popup {
     margin: 0px;
     padding: 5px 0px 0px 10px;
     border: solid 1px #888888;
+    box-shadow: 12px 12px 20px 0px rgba(0, 0, 0, .3);
     z-index:2;
 }
 

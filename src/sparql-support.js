@@ -2145,7 +2145,9 @@ function debugQuery(id, command) {
       for(let i = 0; i < delta; i++) { debugText += "]"; }
     }
     // add subject
-    if (debugText.replace(/ #/, "\n#").replace(/\[\s/, " ?blank ;\n").replace(/\s*[;\.]\s*\n[\s\S]*/, "").replace(/ *\/ */g, "/").replace(/^\s*/, "").replace(/\s*$/, "").split(/ +/).length == 2) {
+    if (debugText.replace(/ #/, "\n#").replace(/\[\s/, " ?blank ;\n").replace(/\s*[;\.]\s*\n[\s\S]*/, "").replace(/\n/, " ")
+        .replace(/\([^\(\)]+\)/, "()").replace(/ *[\/\|] */g, "/").replace(/^\s*/, "") // property path
+        .replace(/\s*$/, "").split(/ +/).length == 2) {
       debugText = "?s " + debugText;
     }
   }
