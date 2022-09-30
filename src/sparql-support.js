@@ -186,13 +186,13 @@ function mouseDown(cm, e, id) {
     } else if (e.target.id == "query_tab_help_" + id) {
       // help button click
     } else {
-      if (parseInt(e.target.innerHTML) - 1 != ssParam.activeTab) changeTab(cm, parseInt(e.target.innerHTML) - 1, id);
+      const newTab = parseInt(e.target.id.split("_")[2]);
+      if (newTab != ssParam.activeTab) changeTab(cm, newTab, id);
       else {
 	let button = document.getElementById("query_tab_0_" + id);
 	let baseStyle = button.currentStyle || document.defaultView.getComputedStyle(button, '');
 	let width = baseStyle.width.replace("px", "") - 0;
 	let margin = baseStyle.marginRight.replace("px", "") - 0;
-	ssParam.queryTabSize = width + margin + 2;
 	ssParam.mouseXstart = e.pageX;
 	ssParam.dragFlag = true;
       }
@@ -249,7 +249,7 @@ function mouseUp(cm, id) {
   let tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
   if (ssParam.codeMirrorDiv[id].offsetWidth - ssParam.textareaWidthDelta != ssParam.ctrlTabsDiv[id].offsetWidth) {
     ssParam.ctrlTabsDiv[id].style.width = ssParam.codeMirrorDiv[id].offsetWidth - ssParam.textareaWidthDelta + "px";
-    setQueryTabWidth(tabNum);
+    setQueryTabWidth(tabNum, id);
   }
 }
 
@@ -259,10 +259,14 @@ function mouseMove(cm, e, id) {
     let dist = e.pageX - ssParam.mouseXstart;
     if (!(ssParam.activeTab == 0 && dist < 0) && !(ssParam.activeTab == tabNum && dist > 0)) {
       document.getElementById("query_tab_" + ssParam.activeTab + "_" + id).style.left = dist + "px";
-      if (dist < ssParam.queryTabSize * (-1)) {
+      let leftTabWidth = 0;
+      let rightTabWidth = 0;
+      if (ssParam.activeTab > 0) leftTabWidth = parseInt(document.defaultView.getComputedStyle(document.getElementById("query_tab_" + (ssParam.activeTab - 1) + "_" + id)).width.replace('px', '')) + 6;
+      if (ssParam.activeTab < tabNum) rightTabWidth = parseInt(document.defaultView.getComputedStyle(document.getElementById("query_tab_" + (ssParam.activeTab + 1) + "_" + id)).width.replace('px', '')) + 6;
+      if (dist < leftTabWidth * (-1)) {
 	replaceTab(cm, id, -1);
 	ssParam.mouseXstart = e.pageX;
-      } else if (dist > ssParam.queryTabSize) {
+      } else if (dist > rightTabWidth) {
 	replaceTab(cm, id, 1);
 	ssParam.mouseXstart = e.pageX;
       }
@@ -325,6 +329,7 @@ function keyUpInner(cm, e, id){
 
 function saveCode(cm, id){
   let text = cm.getValue();
+  setTabLabel(id);
   ssParam.textarea[id].value = text;
   localStorage[ssParam.pathName + '_sparql_code_' + ssParam.activeTab + "_" + id] = text;
   setFormAction(cm, id, text);
@@ -333,6 +338,7 @@ function saveCode(cm, id){
 function setCmDiv(cm, id){
   let text = ssParam.textarea[id].value;
   //cm.replaceRange(text, Pos(0, 0), Pos(cm.lineCount(), 0));
+  setTabLabel(id);
   cm.setValue(text);
   cm.focus();
   setFormAction(cm, id, text);
@@ -347,17 +353,30 @@ function setCmDiv(cm, id){
   }
 }
 
-/// completion
-//////////////////////////////////
+function setTabLabel(id){
+  const tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
+  for (let i = 0; i <= tabNum; i++) {
+    if (document.getElementById("query_tab_" + i + "_" + id)) {
+      const text = localStorage[ssParam.pathName + '_sparql_code_' + i + "_" + id];
+      if (text && text.match(/#\s+\@label +\w+/)) document.getElementById("query_tab_" + i + "_" + id).innerHTML = text.match(/#\s+\@label +(\w+)/)[1];
+      else document.getElementById("query_tab_" + i + "_" + id).innerHTML = i + 1;
+      setQueryTabWidth(tabNum, id);
+    }
+  }
+}
 
+
+/// completion
+////////////////////////////////////
 function tabKeyDown(cm, caret, id, shiftKey){
   let string;
   let prefixCopy = false;
   let line = cm.getLine(caret.line);
   if (!ssParam.termFrag) getTermFrag(cm, caret);
-  if (caret.line == 0 && (ssParam.queryFormer.match(/^##+$/) && ssParam.termFrag.match(/^##+$/)
-			  || ssParam.queryFormer.match(/^##+ *$/) && ssParam.termFrag.match(/^endpoint$/)
-			  || ssParam.queryFormer.match(/^##+ *endpoint $/) && ssParam.termFrag.match(/^http$/))) string = autoCompletionEndpoint();
+  if (caret.line == 0 && ((ssParam.queryFormer.match(/^##+$/) && ssParam.termFrag.match(/^##+$/))
+			  || (ssParam.queryFormer.match(/^##+ *$/) && ssParam.termFrag.toLowerCase().match(/^endpoint$/))
+			  || (ssParam.queryFormer.match(/^# +\@$/) && ssParam.termFrag.toLowerCase().match(/^\@endpoint$/))
+			  || (ssParam.queryFormer.toLowerCase().match(/^##+ *endpoint $/) && ssParam.termFrag.match(/^http$/)))) string = autoCompletionEndpoint();
   else if (!ssParam.queryFormer && ssParam.termFrag.match(/^C$/) && caret.line == 0) { string = "COPY" }
   else if (!ssParam.queryFormer && ssParam.termFrag.match(/^D[Ee][Ff]$/)) { string = "DEFINE sql:select-option \"order\"" }
   else if (!ssParam.termFrag) return [false, false];
@@ -473,7 +492,7 @@ function tabKeyDown(cm, caret, id, shiftKey){
   function autoCompletionEndpoint(){
     let domain = getDomain(ssParam.pathName);
     let string = "## endpoint ";
-    if (ssParam.termFrag == "endpoint") string = "endpoint ";
+    if (ssParam.termFrag.toLowerCase().match(/endpoint/)) string = ssParam.termFrag + " ";
     else if (ssParam.termFrag == "http") string = "";
     let next = "";
     if (localStorage[domain + '_endpoint_list']) {
@@ -1639,7 +1658,7 @@ function initDivQueries(cm, id){
   ssParam.confirmBox.appendChild(cancel);
   ssParam.confirmBox.appendChild(remove);
 
-  setQueryTabWidth(tabNum);
+  setQueryTabWidth(tabNum, id);
   saveCode(cm, id);
 }
 
@@ -1653,10 +1672,10 @@ function initQueryTabs(cm, id){
     let liNode = document.createElement("li");
     ulNode.appendChild(liNode);
     liNode.innerHTML = 1 + i;
-    liNode.className = "query_tab";
+    liNode.className = "query_tab query_tab_setting";
     liNode.id = "query_tab_" + i + "_" + id;
     if (i == ssParam.activeTab) {
-      liNode.className = "query_tab query_tab_active";
+      liNode.className = "query_tab query_tab_setting query_tab_active";
       liNode.style.cursor = "move";
       liNode.style.left = "0px";
     } else if (i == tabNum + 1) {
@@ -1671,7 +1690,31 @@ function initQueryTabs(cm, id){
       liNode.innerHTML = "-";
     }
   }
-
+  ulNode.onmouseover = (e) => {
+    if (e.target.classList.contains("query_tab_active")) {
+      const query = localStorage[ssParam.pathName + '_sparql_code_' + ssParam.activeTab + "_" + id].toLowerCase();
+      if (query.match(/^#+ *\@*endpoint +http[^\s]+/)) {
+	const endpoint = query.match(/^#+ *\@*endpoint +(http[^\s]+)/)[1];
+	const tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
+	for (let i = 0; i <= tabNum; i++) {
+	  if (ssParam.activeTab == i) continue;
+	  const tabQuery = localStorage[ssParam.pathName + '_sparql_code_' + i + "_" + id].toLowerCase();
+	  if (tabQuery.match(/^#+ *\@*endpoint +http[^\s]+/) && tabQuery.match(/^#+ *\@*endpoint +(http[^\s]+)/)[1] == endpoint) {
+	    document.getElementById("query_tab_" + i + "_" + id).classList.add("query_tab_same_endpoint");
+	  }
+	}
+      }
+    }
+  };
+  ulNode.onmouseout = (e) => {
+    if (e.target.classList.contains("query_tab_active")) {
+      const tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
+      for (let i = 0; i <= tabNum; i++) {
+	document.getElementById("query_tab_" + i + "_" + id).classList.remove("query_tab_same_endpoint");
+      }
+    }
+  };
+  
   ssParam.textarea[id].value = localStorage[ssParam.pathName + '_sparql_code_' + ssParam.activeTab + '_' + id];
   setCmDiv(cm, id);
 }
@@ -1702,7 +1745,7 @@ function initDivInner(cm, id){
   // switch button (inner mode, json)
   ulNode.appendChild(liNode);
   liNode.id = "query_tab_inner_" + id;
-  liNode.className = "query_tab query_tab_button";
+  liNode.className = "query_tab query_tab_setting query_tab_button";
   liNode.style.width = "80px";
   liNode.style.marginLeft = "10px";
   liNode.innerHTML = "endpoint";
@@ -1750,11 +1793,11 @@ function addTab(cm, id){
   liNode.appendChild(document.createTextNode(tabNum + 1));
   liNode.id = "query_tab_" + tabNum + "_" + id;
   liNode.name = "query_tab";
-  liNode.className = "query_tab";
+  liNode.className = "query_tab query_tab_setting";
   ssParam.results['sparql_res_' + tabNum + "_" + id] = "";
   changeTab(cm, tabNum, id);
   localStorage[ssParam.pathName + '_sparql_code_tab_' + tabNum + "_" + id] = "";
-  setQueryTabWidth(tabNum);
+  setQueryTabWidth(tabNum, id);
 }
 
 function removeTab(cm, id){
@@ -1795,7 +1838,6 @@ function removeTabRun(cm, id){
     let resTable = ssParam.results['sparql_res_' + ssParam.activeTab + "_" + id];
     ssParam.resultNode[id].appendChild(resTable);
   }
-  setQueryTabWidth(tabNum);
   setCmDiv(cm, id);
 }
 
@@ -1958,16 +2000,25 @@ function resetDescribeLog(){
   ssParam.describeTarget = -1;
 }
 
-function setQueryTabWidth(tabNum){
-  let tab_width = 56;
-  let width = document.getElementById("control_tabs").offsetWidth;
-  if ((tabNum + 1) * 62 + 170 > width) {
-    tab_width = Math.floor((width - 170) / (tabNum + 1) - 6);
-    if (tab_width < 30) tab_width = 30;
+function setQueryTabWidth(tabNum, id){
+  tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
+  let tab_width = 46;
+  const width = document.getElementById("control_tabs").offsetWidth;
+  let labeledWidth = 0;
+  for (let i = 0; i <= tabNum; i++) {
+    const tabWidth = parseInt(document.defaultView.getComputedStyle(document.getElementById("query_tab_" + i + "_" + id)).width.replace('px', ''));
+    if (tabWidth > tab_width) {
+      labeledWidth += tabWidth + 16;
+      tabNum--;
+    }
+  }
+  if ((tabNum + 1) * 62 + 186 > width - labeledWidth) {
+    tab_width = Math.floor((width - labeledWidth - 186) / (tabNum + 1) - 16);
+    if (tab_width < 20) tab_width = 20;
   }
   let list = document.getElementsByClassName("query_tab");
   for (let i in list) {
-    if (list[i].id && list[i].id.match(/^query_tab_\d+_query$/)) list[i].style.width = tab_width + "px";
+    if (list[i].id && list[i].id.match(/^query_tab_\d+_query$/)) list[i].style.minWidth = tab_width + "px";
   }
 }
 
@@ -2146,8 +2197,8 @@ function debugQuery(id, command) {
     }
     // add subject
     if (debugText.replace(/ #/, "\n#").replace(/\[\s/, " ?blank ;\n").replace(/\s*[;\.]\s*\n[\s\S]*/, "").replace(/\n/, " ")
-        .replace(/\([^\(\)]+\)/, "()").replace(/ *[\/\|] */g, "/").replace(/^\s*/, "") // property path
-        .replace(/\s*$/, "").split(/ +/).length == 2) {
+	.replace(/\([^\(\)]+\)/, "()").replace(/ *[\/\|] */g, "/").replace(/^\s*/, "") // property path
+	.replace(/\s*$/, "").split(/ +/).length == 2) {
       debugText = "?s " + debugText;
     }
   }
@@ -2301,4 +2352,3 @@ function isJson(arg){
     return false;
   }
 }
-
