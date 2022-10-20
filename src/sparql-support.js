@@ -329,9 +329,9 @@ function keyUpInner(cm, e, id){
 
 function saveCode(cm, id){
   let text = cm.getValue();
-  setTabLabel(id);
   ssParam.textarea[id].value = text;
   localStorage[ssParam.pathName + '_sparql_code_' + ssParam.activeTab + "_" + id] = text;
+  setTabLabel(id);
   setFormAction(cm, id, text);
 }
 
