@@ -228,8 +228,8 @@ function rightClick(cm, e, id) {
       ssParam.debugText = e.target.innerHTML;
       if (selectText) ssParam.debugText = selectText;
       ssParam.debugDiv.style.display = "block";
-      ssParam.debugDiv.style.top = (ssParam.debugClickTarget.getBoundingClientRect().top - ssParam.codeMirrorDiv[id].getBoundingClientRect().top + 20) + "px";
-      ssParam.debugDiv.style.left = (e.clientX - ssParam.codeMirrorDiv[id].getBoundingClientRect().left + 10) + "px";
+      ssParam.debugDiv.style.top = (ssParam.debugClickTarget.getBoundingClientRect().top + 20) + "px";
+      ssParam.debugDiv.style.left = (e.clientX + 10) + "px";
     }
   }
 }
@@ -1223,15 +1223,15 @@ function initDiv(cm, id){
   ssParam.textarea[id] = textarea;
 
   // query tab div
-  let newNode = document.createElement("div")
-  let controlNode = parentNode.insertBefore(newNode, codeMirrorDiv)
+  let newNode = document.createElement("div");
+  let controlNode = parentNode.insertBefore(newNode, codeMirrorDiv);
   controlNode.className = "control_tabs";
   controlNode.id = "control_tabs";
   ssParam.ctrlTabsDiv[id] = controlNode;
   
   // copy to clipboard div
   newNode = document.createElement("div")
-  let clipboardNode = parentNode.insertBefore(newNode, codeMirrorDiv.nextSibling)
+  let clipboardNode = parentNode.insertBefore(newNode, codeMirrorDiv.nextSibling);
   clipboardNode.className = "clipboard_ctrl";
   
   // parent form
@@ -1468,7 +1468,7 @@ function initDiv(cm, id){
               <span style=" margin-right:30px;" class="copy_popup_form">
 	        <input type="radio" name="mode" id="rawQueryRadio" class="copy_popup_form" value="0" style="margin-left:30px;"> Raw query
 	        <input type="radio" name="mode" id="queryUrlRadio" class="copy_popup_form" value="1" style="margin-left:10px;" checked="checked"> Query URL
-	        <input type="radio" name="mode" class="copy_popup_form" id="shortUrlRadio" value="2"> Short URL
+	        <input type="radio" name="mode" id="shortUrlRadio" class="copy_popup_form" value="2" style="margin-left:10px;"> Share Link
               </span>
 	      <span id="autorun" style="margin-right:30px;display: none;" class="copy_popup_form"><input type="checkbox" class="copy_popup_form" id="autoRunChkBox" value="1"> Auto run </span>
 	    </span>
@@ -1486,10 +1486,10 @@ function initDiv(cm, id){
   let debugDiv = document.createElement("div");
   let commandUl = document.createElement("ul");
   let debugCommands = [
-    { command: "subject", label: " &gt; Subject"},
-    { command: "predicate", label: " &gt; Predicate"},
-    { command: "object", label: " &gt; Object"},
-    { command: "triple", label: " &gt; Triple pattern"}
+    { command: "subject", label: " - Subject"},
+    { command: "predicate", label: " - Predicate"},
+    { command: "object", label: " - Object"},
+    { command: "triple", label: " - Triple pattern"}
   ];
   for (let d of debugCommands) {
     let commandLi = document.createElement("li");
@@ -1503,8 +1503,9 @@ function initDiv(cm, id){
       debugQuery(id, e.target.command);
     })
     commandUl.appendChild(commandLi);
+    if (d.command == "triple") commandLi.classList.add("debug_command_bottom");
   }
-  codeMirrorDiv.appendChild(debugDiv);
+  parentNode.insertBefore(debugDiv, codeMirrorDiv.nextSibling);
   debugDiv.id = "debug_command_div";
   debugDiv.innerHTML = "Search as";
   debugDiv.className = "debug_popup debug";
@@ -2223,9 +2224,11 @@ function debugQuery(id, command) {
   }
   let lines = sparqlQuery.split(/\n/);
   let expQuery = "";
+  let selectFlag = false;
   for (let line of lines) {
     if (line.toUpperCase().match(/^\s*SELECT /)) {
       expQuery += "SELECT *\n";
+      selectFlag = true;
     } else if (line.toUpperCase().match(/^\s*WHERE /)) {
       expQuery += "WHERE {\n  ";
       if (command == "subject") expQuery += debugText + " ?p ?o";
@@ -2235,7 +2238,9 @@ function debugQuery(id, command) {
       expQuery += " .\n}\nLIMIT " + ssParam.debugLimit;
       break;
     } else {
-      expQuery += line + "\n";
+      if (!selectFlag || (selectFlag && line.toUpperCase().match(/^\s*FROM /))) {
+	expQuery += line + "\n";
+      }
     }
   }
   console.log(expQuery);
