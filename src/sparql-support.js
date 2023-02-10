@@ -1230,7 +1230,7 @@ function initDiv(cm, id){
   ssParam.ctrlTabsDiv[id] = controlNode;
   
   // copy to clipboard div
-  newNode = document.createElement("div")
+  newNode = document.createElement("div");
   let clipboardNode = parentNode.insertBefore(newNode, codeMirrorDiv.nextSibling);
   clipboardNode.className = "clipboard_ctrl";
   
@@ -1484,7 +1484,7 @@ function initDiv(cm, id){
 
   // popuo div for debug mode
   newNode = document.createElement("div");
-  let debugDiv = parentNode.insertBefore(newNode, codeMirrorDiv.nextSibling);
+  let debugDiv = parentNode.insertBefore(newNode, clipboardNode.nextSibling);
   let commandUl = document.createElement("ul");
   let debugCommands = [
     { command: "subject", label: " - Subject"},
