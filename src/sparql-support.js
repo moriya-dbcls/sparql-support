@@ -1483,7 +1483,8 @@ function initDiv(cm, id){
   }
 
   // popuo div for debug mode
-  let debugDiv = document.createElement("div");
+  newNode = document.createElement("div");
+  let debugDiv = parentNode.insertBefore(newNode, codeMirrorDiv.nextSibling);
   let commandUl = document.createElement("ul");
   let debugCommands = [
     { command: "subject", label: " - Subject"},
@@ -1505,7 +1506,6 @@ function initDiv(cm, id){
     commandUl.appendChild(commandLi);
     if (d.command == "triple") commandLi.classList.add("debug_command_bottom");
   }
-  parentNode.insertBefore(debugDiv, codeMirrorDiv.nextSibling);
   debugDiv.id = "debug_command_div";
   debugDiv.innerHTML = "Search as";
   debugDiv.className = "debug_popup debug";
