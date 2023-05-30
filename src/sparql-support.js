@@ -857,7 +857,14 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
       for (let i = 0; i < vars.length; i++) {
 	let regex = new RegExp("\\s\\$" + vars[i] + "\\s");
 	resTh = document.createElement("th");
-	let tmp = decodeURI(escape(vars[i]));
+	let tmp;
+	try {
+	  tmp = decodeURI(escape(vars[i]));
+	} catch(e) {
+	  //console.log(e);
+	  console.log("Failure to decode variable '" + vars[i] + "'.");
+	  tmp = vars[i];
+	}
 	if (searchPredicate && vars[i] == "__p__") tmp = "??";
 	resTh.appendChild(document.createTextNode(tmp));
 	resTr.appendChild(resTh);
@@ -1224,14 +1231,14 @@ function initDiv(cm, id){
 
   // query tab div
   let newNode = document.createElement("div");
-  let controlNode = parentNode.insertBefore(newNode, codeMirrorDiv);
+  let controlNode = codeMirrorDiv.parentNode.insertBefore(newNode, codeMirrorDiv);
   controlNode.className = "control_tabs";
   controlNode.id = "control_tabs";
   ssParam.ctrlTabsDiv[id] = controlNode;
   
   // copy to clipboard div
   newNode = document.createElement("div");
-  let clipboardNode = parentNode.insertBefore(newNode, codeMirrorDiv.nextSibling);
+  let clipboardNode = codeMirrorDiv.parentNode.insertBefore(newNode, codeMirrorDiv.nextSibling);
   clipboardNode.className = "clipboard_ctrl";
   
   // parent form
@@ -1484,7 +1491,7 @@ function initDiv(cm, id){
 
   // popuo div for debug mode
   newNode = document.createElement("div");
-  let debugDiv = parentNode.insertBefore(newNode, clipboardNode.nextSibling);
+  let debugDiv = codeMirrorDiv.parentNode.insertBefore(newNode, clipboardNode.nextSibling);
   let commandUl = document.createElement("ul");
   let debugCommands = [
     { command: "subject", label: " - Subject"},
