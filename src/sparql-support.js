@@ -2298,8 +2298,8 @@ function setDefaultUri(){
 }
 
 async function setPrefixUri(cm, caret, id, prefix, flag) {
-  // let url = "https://prefix.cc/" + prefix + ".file.json";
-  let url = location.protocol + "//sparql-support.dbcls.jp/api/relay?url=http://prefix.cc/" + prefix + ".file.json";
+  let url = "https://prefix.cc/" + prefix + ".file.json";
+  // let url = location.protocol + "//sparql-support.dbcls.jp/api/relay?url=http://prefix.cc/" + prefix + ".file.json";
   let options = { method: 'GET'};
   let res = await fetch(url, options).then(res=>res.json());
   let prefixes = prefix.split(",");
