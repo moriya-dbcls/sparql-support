@@ -1013,7 +1013,7 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	  resTr.appendChild(resTd);
 	}
 	resTbody.appendChild(resTr);
-	if (i != 0 && ((i + 1) % ssParam.delayRenderUnit == 0 || i + 1 == res.results.bindings.length)) {
+	if ((i != 0 && (i + 1) % ssParam.delayRenderUnit == 0) || i + 1 == res.results.bindings.length) {
 	  resTbodyList.push(resTbody);
 	  resTbody = document.createElement("tbody");
 	}
