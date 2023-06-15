@@ -60,14 +60,16 @@ CodeMirror.defineOption("sparqlSupportInnerMode", false, function(cm, id) {
   if (id) {
     data = cm.state.selectionPointer = {
       value: typeof id == "string" ? id : "default",
-      mousedown: function(e) { mouseDownInner(e, id); },
+      mousedown: function(e) { mouseDownInner(cm, e, id); },
       keydown: function(e) { keyDownInner(cm, e, id); },
-      keyup: function(e) { keyUpInner(cm, e, id); }
+      keyup: function(e) { keyUpInner(cm, e, id); },
+      scroll: function(e) { scrollResult(e, id); }
 
     };
     document.addEventListener("click", data.mousedown, false);
     document.addEventListener("keydown", data.keydown, false);
     document.addEventListener("keyup", data.keyup, false);
+    document.addEventListener("wheel", data.scroll, false);
 
     initDivInner(cm, id);
   }
@@ -82,7 +84,8 @@ let ssParam = {
   prefixList: "",
   prefixListUrl: [],
   ctrlEnterSubmitFlag: true,
-  sparqlProxyFlag: false
+  sparqlProxyFlag: false,
+  delayRenderUnit: 1000
 }
 
 /// event
@@ -159,7 +162,6 @@ function keyDown(cm, e, id){
     ssParam.preString = "";
   }
   hidePopupCopyForm();
-  saveCode(cm, id);
 }
 
 function keyUp(cm, e, id){
@@ -275,7 +277,7 @@ function mouseMove(cm, e, id) {
   }
 }
 
-function mouseDownInner(e, id) {
+function mouseDownInner(cm, e, id) {
   if (e.target.id == "submit_button_" + id && ssParam.innerMode[id]) {
     innerModeRunQuery(ssParam.activeTab, id);
   } else if (e.target.id == "query_tab_inner_" + id) {
@@ -288,8 +290,9 @@ function mouseDownInner(e, id) {
     if (ssParam.endpointBrowserLink) {
       let url = "https://sparql-support.dbcls.jp/endpoint-browser.html";
       window.open(url
-		  + "?endpoint=" + encodeURIComponent(localStorage[ssParam.pathName + '_endpoint_' + id])
+		  + "?endpoint=" + encodeURIComponent(extractEndpoint(cm.getValue()))
 		  + "&node=" + node
+		  + "&graphs="
 		  + "&limit=100"
 		  + "&exec=1", "_blank");
     } else if (e.target.href) {
@@ -308,13 +311,18 @@ function mouseDownInner(e, id) {
     ssParam.describeTarget++;
     setSubResButton(id);
     ssParam.subResNode[id].appendChild(ssParam.describeLog[ssParam.describeTarget]);
+  } else if (e.target.closest("#res_div_query")) {
+    delayRendering(id);
   }
 }
 
 function keyDownInner(cm, e, id){
   if (e.altKey && document.getElementById("popup_eb_flag")) {
+    console.log("hoge");
     document.getElementById("popup_eb_flag").style.display = 'block';
     ssParam.endpointBrowserLink = true;
+  } else if ((e.metaKey || e.ctrlKey) && e.key == 'f') { // web browser search
+    delayRendering(id);
   }
 }
 
@@ -324,6 +332,10 @@ function keyUpInner(cm, e, id){
     document.getElementById("popup_eb_flag").style.display = 'none';
   }
 }
+
+function scrollResult(e, id) {
+  if (e.target.closest("#res_div_query")) delayRendering(id);
+} 
 
 /// div value <-> textarea code --> localStorage
 //////////////////////////////////
@@ -645,7 +657,7 @@ function chkQueryPrefix(id){
   }
   if (Object.keys(unknownPrefix).length > 0) {
     let pre = document.createElement("pre");
-    pre.id = "inner_result";
+    pre.class = "inner_result";
     pre.style = "margin-left:5px;";
     pre.appendChild(document.createTextNode("Undefined prefix: " + Object.keys(unknownPrefix).join(" ")));
     ssParam.resultNode[id].innerHTML = "";
@@ -743,10 +755,10 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
   }
 
   //// output endpoint error to inner html
-  let outError = function(res, runId){
+  let outError = function(id, res, runId){
     let runTab = ssParam.job[runId];
     let pre = document.createElement("pre");
-    pre.id = "inner_result";
+    pre.class = "inner_result";
     pre.appendChild(document.createTextNode(res.status + "\n\n" + res.text));
     if (ssParam.activeTab == runTab) {
       ssParam.resultNode[id].innerHTML = "";
@@ -755,7 +767,7 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
     ssParam.results['sparql_res_' + runTab + "_" + id] = pre;
     clearInterval(loadingTimer);
     if (document.getElementById("query_tab_" + runTab + "_" + id)) {
-      document.getElementById("query_tab_" + runTab + "_" + id).style.borderColor = "rgba(127, 127, 127, 0.5)";
+      document.getElementById("query_tab_" + runTab + "_" + id).style.borderColor = null;
     } else if (document.getElementById("slsLoading_" + id)) { // for SPARQList support
       document.getElementById("slsLoading_" + id).style.visibility = "hidden";
     }
@@ -763,115 +775,23 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
     return 0;
   }
 
-  //download button
-  let mkDlButton = function(resDiv, tab, id){
-    let dlSelect = document.createElement("select");
-    dlSelect.classList.add("result_download_button");
-    dlSelect.add( (new Option("Download", "dl", "defaultselected", "selected")));
-    dlSelect.add( (new Option("JSON", "json")));
-    dlSelect.add( (new Option("CSV", "csv")));
-    dlSelect.add( (new Option("TSV", "tsv")));
-    dlSelect.onchange = function(){
-      let type = this.value;
-      if (type != "dl") {
-	let res = ssParam.dlResults["dl_json_" + tab + " " + id];
-	let data = JSON.stringify(res, null, "  ");
-	let filename = "result.json";
-	if (type == "csv" || type == "tsv") {
-	  let delimiter = ",";
-	  filename = "result.csv";
-	  if (type == "tsv") {
-	    delimiter = "\t";
-	    filename = "result.tsv";
-	  }
-	  let heads = [];
-	  let lines = [];
-	  for (let param of res.head.vars) {
-	    param = decodeURI(escape(param));
-	    if (searchPredicate && param == "__p__") param = "??";
-	    if (type == "csv") param = "\"" + param + "\"";
-	    heads.push(param);
-	  }
-	  for (let i = 0; i < res.results.bindings.length; i++) {
-	    let values = []
-	    for (let param of res.head.vars) {
-	      let value = "";
-	      if (res.results.bindings[i][param]) {
-		value = res.results.bindings[i][param].value;
-		if (type == "csv") {
-		  value = value.replace(/\"/g, '""');
-		  value = "\"" + value + "\"";
-		}
-	      }
-	      values.push(value);
-	    }
-	    lines[i] = values.join(delimiter);
-	  }
-	  data = heads.join(delimiter) + "\n";
-	  data += lines.join("\n");
-	}
-	var blob = new Blob([data], { "type" : "text/plain" });
-        if (window.navigator.msSaveBlob) { 
-	  window.navigator.msSaveBlob(blob, filename); 
-	  window.navigator.msSaveOrOpenBlob(blob, filename); 
-        } else {
-	  let element = document.createElement("a");
-	  element.style.display = "none";
-	  resDiv.appendChild(element);
-	  element.href = window.URL.createObjectURL(blob);
-	  element.download = filename;
-	  element.click();
-	  element.remove();
-        }
-      }
-    }
-    resDiv.appendChild(dlSelect);
-  }
-
   //// output result to inner html
-  let outResult = function(res, runId, endpoint, describe){
+  let outResult = function(id, res, runId, endpoint, describe, searchPredicate){
     let endTime = Date.now();
     let vars = ["s", "p ", "o"]; //describe
     if (res.head && res.head.vars) vars = res.head.vars;
-    let head = [];
-    let resDiv = document.createElement("div");
     let resTime = document.createElement("p");
+    let resThead = document.createElement("thead");
+    let resTr = document.createElement("tr");
+    let resTh, resTd, resInput;
+    let resTbodyList = [];
+    let runTab = ssParam.job[runId];
     let sec = Math.round((endTime - startTime) / 100) / 10;
     let ask = false;
     if (res.boolean === true || res.boolean === false) ask = true;
     resTime.className = "inner_result_time";
-    resDiv.appendChild(resTime);
-    if (!describe) mkDlButton(resDiv, ssParam.activeTab, id);
-    
-    if (describe) {
-      let p = document.createElement("p");
-      p.className = "inner_result_sub_title";
-      p.appendChild(document.createTextNode("DESCRIBE <" + describe + ">"));
-      resDiv.appendChild(p);
-    }
-    let resTable = document.createElement("table");
-    resTable.id = "inner_result_table";
-    let resTr = document.createElement("tr");
-    let resTh, resTd, resInput;
-    if (!ask) {
-      for (let i = 0; i < vars.length; i++) {
-	let regex = new RegExp("\\s\\$" + vars[i] + "\\s");
-	resTh = document.createElement("th");
-	let tmp;
-	try {
-	  tmp = decodeURI(escape(vars[i]));
-	} catch(e) {
-	  //console.log(e);
-	  console.log("Failure to decode variable '" + vars[i] + "'.");
-	  tmp = vars[i];
-	}
-	if (searchPredicate && vars[i] == "__p__") tmp = "??";
-	resTh.appendChild(document.createTextNode(tmp));
-	resTr.appendChild(resTh);
-      }
-      resTable.appendChild(resTr);
-    }
-    
+    ssParam.activeTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
+
     let displayDatatype = function(element, datatype){
       let popupSpan = document.createElement("span");
       popupSpan.id = "popup_datatype";
@@ -908,8 +828,30 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	if (document.getElementById("popup_datatype")) document.getElementById("popup_datatype").remove();
       };
     }
+
+    // thead for result and describe
+    if (!ask) {
+      resThead.appendChild(resTr);
+      for (let i = 0; i < vars.length; i++) {
+	let regex = new RegExp("\\s\\$" + vars[i] + "\\s");
+	resTh = document.createElement("th");
+	let tmp;
+	try {
+	  tmp = decodeURI(escape(vars[i]));
+	} catch(e) {
+	  //console.log(e);
+	  console.log("Failure to decode variable '" + vars[i] + "'.");
+	  tmp = vars[i];
+	}
+	if (searchPredicate && vars[i] == "__p__") tmp = "??";
+	resTh.appendChild(document.createTextNode(tmp));
+	resTr.appendChild(resTh);
+      }
+    }
     
     if (describe) {  // describe result (JSON-LD)
+      resTime.appendChild(document.createTextNode("[ " + count + " triples. -- " + sec + " sec. ]"));
+      let resTbody = document.createElement("tbody");
       let addRow = function(triple){
 	let resTr = document.createElement("tr");
 	for (let value of triple) {
@@ -958,7 +900,7 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	    let types = [graph["@type"]];
 	    if (Array.isArray(graph["@type"])) types = graph["@type"];
 	    for (let type of types) {
-	      resTable.appendChild(addRow([{"@id": graph["@id"]}, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", {"@id": type}]));
+	      resTbody.appendChild(addRow([{"@id": graph["@id"]}, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", {"@id": type}]));
 	      count++;
 	    }
 	    continue;
@@ -981,22 +923,47 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	  }
 	  if (Array.isArray(graph[item])) {
 	    for (let o of graph[item]) {
-	      resTable.appendChild(addRow([{"@id": graph["@id"]}, p, o]));
+	      resTbody.appendChild(addRow([{"@id": graph["@id"]}, p, o]));
 	      count++;
 	    }
 	  } else {
-	    resTable.appendChild(addRow([{"@id": graph["@id"]}, p, graph[item]]));
+	    resTbody.appendChild(addRow([{"@id": graph["@id"]}, p, graph[item]]));
 	    count++;
 	  }
 	}
       }
-      resTime.appendChild(document.createTextNode("[ " + count + " triples. -- " + sec + " sec. ]"));
+
+      if (ssParam.activeTab == runTab) {
+	let resDiv = document.createElement("div");
+	let resTable = document.createElement("table");
+	let p = document.createElement("p");
+	resDiv.id = "inner_describe_div_" + id;
+	resTable.id = "inner_describe_table_" + id;
+	resTable.className = "inner_result_table";
+	p.className = "inner_result_sub_title";
+	p.appendChild(document.createTextNode("DESCRIBE <" + describe + ">"));
+	resDiv.appendChild(p);
+	resDiv.appendChild(resTime);
+	resDiv.appendChild(resTable);
+	resTable.appendChild(resTbody);
+	ssParam.describeTarget++;
+	ssParam.describeLog[ssParam.describeTarget] = resDiv;
+	ssParam.describeLog[ssParam.describeTarget + 1] = "";
+	ssParam.subResNode[id].innerHTML = "";
+	ssParam.subResNode[id].appendChild(createDescribeLogButton(id));
+	ssParam.subResNode[id].appendChild(resDiv);
+	ssParam.subResNode[id].style.display = "block";
+      }
 
     } else if (ask) { // ASK
+      let resDiv = document.createElement("div");
       resDiv.appendChild(document.createTextNode(res.boolean));
       resTime.appendChild(document.createTextNode("[ " + sec + " sec. ]"));
+      ssParam.subResNode[id].appendChild(resDiv);
 
     } else {  // sparql result (SPARQL-results+json)
+      resTime.appendChild(document.createTextNode("[ " + res.results.bindings.length + " bindings. -- " + sec + " sec. ]"));
+      let resTbody = document.createElement("tbody");
       for (let i = 0; i < res.results.bindings.length; i++) {
 	resTr = document.createElement("tr");
 	for (let j = 0; j < vars.length; j++) {
@@ -1045,48 +1012,40 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	  }
 	  resTr.appendChild(resTd);
 	}
-	resTable.appendChild(resTr);
+	resTbody.appendChild(resTr);
+	if (i != 0 && ((i + 1) % ssParam.delayRenderUnit == 0 || i + 1 == res.results.bindings.length)) {
+	  resTbodyList.push(resTbody);
+	  resTbody = document.createElement("tbody");
+	}
       }
-      resTime.appendChild(document.createTextNode("[ " + res.results.bindings.length + " bindings. -- " + sec + " sec. ]"));
-    }
-    if (ssParam.innerMode[id] == 2) resTable.style.display = "none";
-    resDiv.appendChild(resTable);
-    ssParam.resultTerms = unique(ssParam.resultTerms);
 
-    let resJson = document.createElement("pre");
-    resJson.id = "inner_result_json";
-    resJson.style.backgroundColor = "transparent";
-    resJson.appendChild(document.createTextNode(JSON.stringify(res, null, "  ")));
-    if (ssParam.innerMode[id] == 1) resJson.style.display = "none";
-    resDiv.appendChild(resJson);
-    
-    ssParam.activeTab = parseInt(localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id]);
-    let runTab = ssParam.job[runId];
-    if (!describe) {
+      let resJson = document.createElement("pre");
+      resJson.id = "inner_result_json_" + id;
+      resJson.style.backgroundColor = "transparent";
+      resJson.appendChild(document.createTextNode(JSON.stringify(res, null, "  ")));
+      
+      ssParam.results['sparql_res_' + runTab + "_" + id] = {
+	time: resTime,
+	thead: resThead,
+	tbody: resTbodyList,
+	json: resJson,
+	download: createDownloadButton(id, runTab, searchPredicate)
+      };
       if (ssParam.activeTab == runTab) {
-	ssParam.resultNode[id].innerHTML = "";
-	ssParam.resultNode[id].appendChild(resDiv);
-	ssParam.subResNode[id].style.display = "none";
-      }
-      ssParam.results['sparql_res_' + runTab + "_" + id] = resDiv;
-    } else {
-      if (ssParam.activeTab == runTab) {
-	ssParam.describeTarget++;
-	ssParam.describeLog[ssParam.describeTarget] = resDiv;
-	ssParam.describeLog[ssParam.describeTarget + 1] = "";
-	ssParam.subResNode[id].innerHTML = "";
-	setSubResButton(id);
-	ssParam.subResNode[id].appendChild(resDiv);
-	ssParam.subResNode[id].style.display = "block";
+	if (ssParam.innerMode[id] == 1) {
+	  renderResultTable(id, ssParam.results['sparql_res_' + runTab + "_" + id]);
+	} else {
+	  renderResultJson(id, ssParam.results['sparql_res_' + runTab + "_" + id]);
+	}
       }
     }
+    ssParam.resultTerms = unique(ssParam.resultTerms);
+    
     if (ssParam.color.q == runTab) ssParam.color.q = false;
     clearInterval(loadingTimer);
     if (document.getElementById("query_tab_" + runTab + "_" + id)) {
-      let className = "query_tab";
-      if (ssParam.activeTab == runTab) className = "query_tab query_tab_setting query_tab_active";
       document.getElementById("query_tab_" + runTab + "_" + id).style.borderColor = null;
-      document.getElementById("query_tab_" + runTab + "_" + id).className = className;
+      if (ssParam.activeTab == runTab) document.getElementById("query_tab_" + runTab + "_" + id).classList.add("query_tab_active");
     } else if (document.getElementById("slsLoading_" + id)){ // for SPARQList support
       document.getElementById("slsLoading_" + id).style.visibility = "hidden";
     }
@@ -1173,10 +1132,10 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
   try{
     let res = await timeout(1800000, fetch(endpoint, options)).then(handleResponse);
     if (res.error) {
-      outError(res, runId);
+      outError(id, res, runId);
     } else {
       if (original_endpoint) endpoint = original_endpoint;
-      outResult(res, runId, endpoint, describe);
+      outResult(id, res, runId, endpoint, describe, searchPredicate);
     }
   } catch (error) {
     console.log(error);
@@ -1187,6 +1146,150 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
     if (endTime - startTime > 30000) text += "\nor endpoint timeout (" + (Math.round((endTime - startTime) / 100) / 10) + " sec.)";
     outError({status: "", text: text}, runId);
   }
+}
+
+
+/// rendering result
+//////////////////////////////////
+
+function renderResultTable(id, res) {
+  let resDiv = document.createElement("div");
+  let resTable = document.createElement("table");
+  resDiv.id = "inner_result_div_" + id;
+  resTable.id = "inner_result_table_" + id;
+  resTable.className = "inner_result_table";
+  resDiv.append(res.time);
+  resDiv.append(res.download);
+  resDiv.append(resTable);
+  resTable.appendChild(res.thead);
+  resTable.appendChild(res.tbody[0]);
+  ssParam.delayRender = false;
+  if (res.tbody[1]) ssParam.delayRender = true;
+  ssParam.resultNode[id].innerHTML = "";
+  ssParam.resultNode[id].appendChild(resDiv);
+  setTimeout(()=>{res.time.scrollIntoView();}, 10);
+  ssParam.subResNode[id].style.display = "none";
+}
+
+function renderResultJson(id, res) {
+  let resDiv = document.createElement("div");
+  resDiv.id = "inner_result_div_" + id;
+  resDiv.append(res.time);
+  resDiv.append(res.json);
+  ssParam.resultNode[id].innerHTML = "";
+  ssParam.resultNode[id].appendChild(resDiv);
+  setTimeout(()=>{res.time.scrollIntoView();}, 10);
+}
+
+function delayRendering(id) {
+  if (ssParam.delayRender && ssParam.innerMode[id] == 1) {
+    ssParam.delayRender = false;
+    if (ssParam.delayRenderId) clearInterval(ssParam.delayRenderId);
+    let renderTab = ssParam.activeTab;
+    let resTbodyList = ssParam.results['sparql_res_' + ssParam.activeTab + "_" + id].tbody;
+    let resTable = document.getElementById("inner_result_table_" + id);
+    ssParam.delayRenderIndex = 1;
+    ssParam.delayRenderId = setInterval(() => {
+      if (renderTab == ssParam.activeTab && resTable) resTable.appendChild(resTbodyList[ssParam.delayRenderIndex]);
+      else clearInterval(ssParam.delayRenderId);
+      ssParam.delayRenderIndex++;
+      if (ssParam.delayRenderIndex == resTbodyList.length) clearInterval(ssParam.delayRenderId);
+    }, 10, resTable, resTbodyList, renderTab);
+  }
+}
+
+//download button
+function createDownloadButton(id, tab, searchPredicate){
+  let dlSelect = document.createElement("select");
+  dlSelect.classList.add("result_download_button");
+  dlSelect.add( (new Option("Download", "dl", "defaultselected", "selected")));
+  dlSelect.add( (new Option("JSON", "json")));
+  dlSelect.add( (new Option("CSV", "csv")));
+  dlSelect.add( (new Option("TSV", "tsv")));
+  dlSelect.onchange = function(){
+    let type = this.value;
+    if (type != "dl") {
+      let res = ssParam.dlResults["dl_json_" + tab + " " + id];
+      let data = JSON.stringify(res, null, "  ");
+      let filename = "result.json";
+      if (type == "csv" || type == "tsv") {
+	let delimiter = ",";
+	filename = "result.csv";
+	if (type == "tsv") {
+	  delimiter = "\t";
+	  filename = "result.tsv";
+	}
+	let heads = [];
+	let lines = [];
+	for (let param of res.head.vars) {
+	  param = decodeURI(escape(param));
+	  if (searchPredicate && param == "__p__") param = "??";
+	  if (type == "csv") param = "\"" + param + "\"";
+	  heads.push(param);
+	}
+	for (let i = 0; i < res.results.bindings.length; i++) {
+	  let values = []
+	  for (let param of res.head.vars) {
+	    let value = "";
+	    if (res.results.bindings[i][param]) {
+	      value = res.results.bindings[i][param].value;
+	      if (type == "csv") {
+		value = value.replace(/\"/g, '""');
+		value = "\"" + value + "\"";
+	      }
+	    }
+	    values.push(value);
+	  }
+	  lines[i] = values.join(delimiter);
+	}
+	data = heads.join(delimiter) + "\n";
+	data += lines.join("\n");
+      }
+      var blob = new Blob([data], { "type" : "text/plain" });
+      if (window.navigator.msSaveBlob) { 
+	window.navigator.msSaveBlob(blob, filename); 
+	window.navigator.msSaveOrOpenBlob(blob, filename); 
+      } else {
+	let element = document.createElement("a");
+	element.style.display = "none";
+	ssParam.resultNode[id].appendChild(element);
+	element.href = window.URL.createObjectURL(blob);
+	element.download = filename;
+	element.click();
+	element.remove();
+      }
+    }
+  }
+  return dlSelect;
+}
+
+function createDescribeLogButton(id){
+  let ul = document.createElement("ul");
+  ul.className = "cm-ss_subres_button";
+  let prevButton = document.createElement("li");
+  prevButton.innerHTML = "&lt;";
+  prevButton.id = "cm-ss_prev_subres_li";
+  prevButton.className = "cm-ss_subres_li cm-ss_subres_li_valid";
+  if (ssParam.describeTarget == 0) {
+    prevButton.id = "cm-ss_prev_subres_li_off";
+    prevButton.className = "cm-ss_subres_li cm-ss_subres_li_invalid";
+  }
+  ul.appendChild(prevButton);
+  let nextButton = document.createElement("li");
+  nextButton.innerHTML = "&gt;";
+  nextButton.id = "cm-ss_next_subres_li";
+  nextButton.className = "cm-ss_subres_li cm-ss_subres_li_valid";
+  if (!ssParam.describeLog[ssParam.describeTarget + 1]) {
+    nextButton.id = "cm-ss_next_subres_li_off";
+    nextButton.className = "cm-ss_subres_li cm-ss_subres_li_invalid";
+  }
+  ul.appendChild(nextButton);
+  let deleteButton = document.createElement("li");
+  deleteButton.innerHTML = "&#x00D7"; // "×"
+  deleteButton.id = "cm-ss_delete_subres_li";
+  deleteButton.className = "cm-ss_subres_li cm-ss_subres_li_valid";
+  ul.appendChild(deleteButton);
+  return ul;
 }
 
 /// init
@@ -1292,7 +1395,8 @@ function initDiv(cm, id){
   codeMirrorDiv.style.width = areaWidth + 'px';
   codeMirrorDiv.style.height = areaHeight + 'px';
   codeMirrorDiv.style.borderStyle = borderStyle.join(" ");
-  codeMirrorDiv.style.borderWidth = borderWidth.join(" ");
+  //codeMirrorDiv.style.borderWidth = borderWidth.join(" ");
+  codeMirrorDiv.style.borderWidth = "1px";
   //codeMirrorDiv.style.borderColor = borderColor.join(" ");
   codeMirrorDiv.style.borderColor = "rgb(96, 96, 96)";
   codeMirrorDiv.style.borderRadius = borderRadius.join(" ");
@@ -1584,13 +1688,13 @@ function initQueryTabs(cm, id){
     }
   }
   ulNode.onmouseover = (e) => {
-    if (e.target.classList.contains("query_tab_active")) {
+    if (e.target.classList.contains("query_tab_active") && localStorage[ssParam.pathName + '_sparql_code_' + ssParam.activeTab + "_" + id]) {
       const query = localStorage[ssParam.pathName + '_sparql_code_' + ssParam.activeTab + "_" + id].toLowerCase();
       const endpoint = extractEndpoint(query);
       if (endpoint) {
 	const tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
 	for (let i = 0; i <= tabNum; i++) {
-	  if (ssParam.activeTab == i) continue;
+	  if (ssParam.activeTab == i || !localStorage[ssParam.pathName + '_sparql_code_' + i + "_" + id]) continue;
 	  const tabQuery = localStorage[ssParam.pathName + '_sparql_code_' + i + "_" + id];
 	  const tabEndpoint = extractEndpoint(tabQuery);
 	  if (tabEndpoint == endpoint) {
@@ -1716,8 +1820,13 @@ function removeTabRun(cm, id){
       }
     }
   }
-  if (ssParam.activeTab == tabNum) {
-    changeTab(cm, ssParam.activeTab - 1, id);
+  ssParam.resultNode[id].innerHTML = "";
+  if (ssParam.activeTab == tabNum) changeTab(cm, ssParam.activeTab - 1, id);
+  else {
+    let newTab = ssParam.activeTab;
+    ssParam.activeTab = tabNum;
+    console.log(newTab + " " + ssParam.activeTab);
+    changeTab(cm, newTab, id);
   }
   localStorage[ssParam.pathName + '_sparql_code_' + tabNum + "_" + id] = "";
   delete localStorage[ssParam.pathName + '_sparql_code_' + tabNum + "_" + id];
@@ -1727,15 +1836,11 @@ function removeTabRun(cm, id){
   tabNum--;
   localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id] = tabNum;
   ssParam.textarea[id].value = localStorage[ssParam.pathName + '_sparql_code_' + ssParam.activeTab + "_" + id];
-  ssParam.resultNode[id].innerHTML = "";
-  if (ssParam.results['sparql_res_' + ssParam.activeTab + "_" + id]) {
-    let resTable = ssParam.results['sparql_res_' + ssParam.activeTab + "_" + id];
-    ssParam.resultNode[id].appendChild(resTable);
-  }
   setCmDiv(cm, id);
 }
 
 function changeTab(cm, newTab, id){
+  clearInterval(ssParam.delayRenderId);
   let tabNum = parseInt(localStorage[ssParam.pathName + '_sparql_code_tab_num_' + id]);
   if (ssParam.activeTab == newTab || newTab > tabNum) return 0;
   if (localStorage[ssParam.pathName + '_sparql_code_' + newTab + "_" + id]) ssParam.textarea[id].value = localStorage[ssParam.pathName + '_sparql_code_' + newTab + "_" + id];
@@ -1743,21 +1848,6 @@ function changeTab(cm, newTab, id){
 
   ssParam.resultNode[id].innerHTML = "";
   ssParam.subResNode[id].style.display = "none";
-  if (ssParam.results['sparql_res_' + newTab + "_" + id]) {
-    let resTable = ssParam.results['sparql_res_' + newTab + "_" + id];
-    ssParam.resultNode[id].appendChild(resTable);
-    if (ssParam.innerMode[id] == 1) {
-      if (document.getElementById("inner_result_table")) {
-	document.getElementById("inner_result_json").style.display = "none";
-	document.getElementById("inner_result_table").style.display = "block";
-      }
-    } else {
-      if (document.getElementById("inner_result_table")) {
-	document.getElementById("inner_result_table").style.display = "none";
-	document.getElementById("inner_result_json").style.display = "block";
-      }
-    }
-  }
 
   setCmDiv(cm, id);
   if (document.getElementById("query_tab_" + newTab + "_" + id)) {
@@ -1768,6 +1858,16 @@ function changeTab(cm, newTab, id){
   document.getElementById("query_tab_" + ssParam.activeTab + "_" + id).style.cursor = "default";
   ssParam.activeTab = newTab;
   localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id] = newTab;
+
+  let newRes = ssParam.results['sparql_res_' + newTab + "_" + id];
+  if (newRes && newRes.tbody[0]) {
+    if (ssParam.innerMode[id] == 1) {
+      renderResultTable(id, newRes);
+    } else {
+      renderResultJson(id, newRes);
+    }
+  }
+  
   resetDescribeLog();
 }
 
@@ -1798,8 +1898,10 @@ function replaceTab(cm, id, move){
     document.getElementById("query_tab_" + ssParam.activeTab + "_" + id).style.left = "0px";
     document.getElementById("query_tab_" + targetTab + "_" + id).classList.add("query_tab_active");
     document.getElementById("query_tab_" + targetTab + "_" + id).style.cursor = "move";
+    document.getElementById("query_tab_" + targetTab + "_" + id).style.borderColor = null;
     document.getElementById("query_tab_" + ssParam.activeTab + "_" + id).classList.remove("query_tab_active");
     document.getElementById("query_tab_" + ssParam.activeTab + "_" + id).style.cursor = "default";
+    document.getElementById("query_tab_" + ssParam.activeTab + "_" + id).style.borderColor = null;
     ssParam.activeTab = targetTab;
     localStorage[ssParam.pathName + '_sparql_code_select_tab_' + id] = targetTab;
   }
@@ -1819,7 +1921,9 @@ function changeRemoveConfirm(){
 }
 
 function switchInnerMode(id){
+  let res = ssParam.results['sparql_res_' + ssParam.activeTab + "_" + id];
   if (ssParam.resultNode[id].style.display == "none") {
+    if (res) renderResultTable(id, res);
     ssParam.resultNode[id].style.display = "block";
     let tags = ["input", "button"];
     for (let j = 0; tags[j]; j++) {
@@ -1837,19 +1941,13 @@ function switchInnerMode(id){
     ssParam.innerMode[id] = 1;
   } else {
     if (ssParam.innerMode[id] == 1) {
-      if(document.getElementById("inner_result_table")){
-	document.getElementById("inner_result_table").style.display = "none";
-	document.getElementById("inner_result_json").style.display = "block";
-      }
+      if (res) renderResultJson(id, res);
       document.getElementById("query_tab_inner_" + id).innerHTML = "json";
       localStorage[ssParam.pathName + '_sparql_target_' + id] = "inner_j";
       ssParam.innerMode[id] = 2;
     } else {
-      if(document.getElementById("inner_result_table")){
-	document.getElementById("inner_result_json").style.display = "none";
-	document.getElementById("inner_result_table").style.display = "block";
-      }
       ssParam.resultNode[id].style.display = "none";
+      ssParam.resultNode[id].innerHTML = "";
       let inputNode = document.getElementById("submit_button_" + id);
       inputNode.type = "submit";
       document.getElementById("query_tab_inner_" + id).innerHTML = "endpoint";
@@ -1858,35 +1956,6 @@ function switchInnerMode(id){
       if (ssParam.sparqlProxyFlag) switchInnerMode(id);
     }
   }
-}
-
-function setSubResButton(id){
-  let ul = document.createElement("ul");
-  ul.className = "cm-ss_subres_button";
-  let prevButton = document.createElement("li");
-  prevButton.innerHTML = "&lt;";
-  prevButton.id = "cm-ss_prev_subres_li";
-  prevButton.className = "cm-ss_subres_li cm-ss_subres_li_valid";
-  if (ssParam.describeTarget == 0) {
-    prevButton.id = "cm-ss_prev_subres_li_off";
-    prevButton.className = "cm-ss_subres_li cm-ss_subres_li_invalid";
-  }
-  ul.appendChild(prevButton);
-  let nextButton = document.createElement("li");
-  nextButton.innerHTML = "&gt;";
-  nextButton.id = "cm-ss_next_subres_li";
-  nextButton.className = "cm-ss_subres_li cm-ss_subres_li_valid";
-  if (!ssParam.describeLog[ssParam.describeTarget + 1]) {
-    nextButton.id = "cm-ss_next_subres_li_off";
-    nextButton.className = "cm-ss_subres_li cm-ss_subres_li_invalid";
-  }
-  ul.appendChild(nextButton);
-  let deleteButton = document.createElement("li");
-  deleteButton.innerHTML = "&#x00D7"; // "×"
-  deleteButton.id = "cm-ss_delete_subres_li";
-  deleteButton.className = "cm-ss_subres_li cm-ss_subres_li_valid";
-  ul.appendChild(deleteButton);
-  ssParam.subResNode[id].appendChild(ul);
 }
 
 function resetDescribeLog(){
@@ -2132,7 +2201,7 @@ function showAutoRunBox(f){
 
 function hidePopupCopyForm() {
   let popup = document.getElementById("popupCopy");
-  if (popup.style.display = "inline") popup.style.display = "none";
+  if (popup && popup.style.display == "inline") popup.style.display = "none";
 }
 
 /// command
@@ -2298,8 +2367,8 @@ function setDefaultUri(){
 }
 
 async function setPrefixUri(cm, caret, id, prefix, flag) {
-  let url = "https://prefix.cc/" + prefix + ".file.json";
-  // let url = location.protocol + "//sparql-support.dbcls.jp/api/relay?url=http://prefix.cc/" + prefix + ".file.json";
+  //let url = "https://prefix.cc/" + prefix + ".file.json";
+  let url = location.protocol + "//sparql-support.dbcls.jp/api/relay?url=http://prefix.cc/" + prefix + ".file.json";
   let options = { method: 'GET'};
   let res = await fetch(url, options).then(res=>res.json());
   let prefixes = prefix.split(",");

@@ -109,8 +109,8 @@ div.cm-ss_result {
     border: solid 3px #dddddd;
     border-radius: 5px;
     overflow: scroll;
+    will-change: transform;
     resize: both;
-    z-index: 2;
 }
 
 div.cm-ss_subres {
@@ -136,23 +136,23 @@ div#inner_result {
     margin-left: 5px;
 }
 
-table#inner_result_table td {
+table.inner_result_table td {
     font-size: 14px;
     padding: 0px 10px 0px 10px;
     position: relative;
 }
 
-table#inner_result_table td a{
+table.inner_result_table td a{
     text-decoration: none;
     color: #4886ad;
 }
 
-table#inner_result_table th {
+table.inner_result_table th {
     text-align: left;
     padding: 0px 10px 0px 10px;
 }
 
-pre#inner_result_table {
+pre.inner_result {
     background-color: transparent;
 }
 
