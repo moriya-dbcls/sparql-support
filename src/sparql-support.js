@@ -1162,7 +1162,7 @@ function renderResultTable(id, res) {
   resDiv.append(res.download);
   resDiv.append(resTable);
   resTable.appendChild(res.thead);
-  resTable.appendChild(res.tbody[0]);
+  if (res.tbody[0]) resTable.appendChild(res.tbody[0]);
   ssParam.delayRender = false;
   if (res.tbody[1]) ssParam.delayRender = true;
   ssParam.resultNode[id].innerHTML = "";
