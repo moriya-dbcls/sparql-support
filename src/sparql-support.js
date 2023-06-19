@@ -1144,7 +1144,7 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
     if (location.protocol == "https:" && endpoint.match(/^http:/)) submesse = "SPARQL support message:\nSSL Mixed Content Error: When the endpoint is not HTTPS, you should use SPARQL support on HTTP. \nOr, set a option to access endpoints via 'sparql-support.dbcls.jp'.\n\n    Temporary: '# @temp-proxy true' in comment\n    Permanent: set command: '# mixed-content-proxy: true;' -> 'Ctrl+Enter'\n";
     let text = "Browser error message:\n" + error.message + "\n\n\n" + submesse;
     if (endTime - startTime > 30000) text += "\nor endpoint timeout (" + (Math.round((endTime - startTime) / 100) / 10) + " sec.)";
-    outError({status: "", text: text}, runId);
+    outError(id, {status: "", text: text}, runId);
   }
 }
 
