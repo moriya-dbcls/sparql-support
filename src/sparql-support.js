@@ -850,7 +850,6 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
     }
     
     if (describe) {  // describe result (JSON-LD)
-      resTime.appendChild(document.createTextNode("[ " + count + " triples. -- " + sec + " sec. ]"));
       let resTbody = document.createElement("tbody");
       let addRow = function(triple){
 	let resTr = document.createElement("tr");
@@ -932,6 +931,7 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	  }
 	}
       }
+     resTime.appendChild(document.createTextNode("[ " + count + " triples. -- " + sec + " sec. ]"));
 
       if (ssParam.activeTab == runTab) {
 	let resDiv = document.createElement("div");
