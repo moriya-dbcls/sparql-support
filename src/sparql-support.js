@@ -1867,7 +1867,8 @@ function changeTab(cm, newTab, id){
       renderResultJson(id, newRes);
     }
   }
-  
+
+  cm.clearHistory();  
   resetDescribeLog();
 }
 
