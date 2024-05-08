@@ -43,10 +43,12 @@ CodeMirror.defineOption("sparqlSupportQueries", false, function(cm, id) {
       mousedown: function(e) { mouseDown(cm, e, id); },
       mouseup: function() { mouseUp(cm, id); },
       mousemove: function(e) { mouseMove(cm, e, id); },
+      rightclick: function(e) { renameTab(cm, e, id); },
       focus: function() { initQueryTabs(cm, id); }
     };
     document.addEventListener("mousedown", data.mousedown, false);
     document.addEventListener("mousemove", data.mousemove, false);
+    document.addEventListener("contextmenu", data.rightclick, false);
     window.addEventListener ("mouseup", data.mouseup, false);
     window.addEventListener("focus", data.focus, false);
     
@@ -210,6 +212,7 @@ function mouseDown(cm, e, id) {
   } else if (e.target.classList.contains("CodeMirror-foldgutter-folded")) {
     ssParam.fold = false;
   }
+  if (e.target != ssParam.renameDiv.childNodes[0]) ssParam.renameDiv.style.display = "none";
 }
 
 function leftClick(cm, e, id) {
@@ -254,6 +257,18 @@ function mouseUp(cm, id) {
     ssParam.ctrlTabsDiv[id].style.width = ssParam.codeMirrorDiv[id].offsetWidth - ssParam.textareaWidthDelta + "px";
     setQueryTabWidth(tabNum, id);
   }
+  if (ssParam.renameDiv.style.display == "block") ssParam.renameDiv.childNodes[0].focus();
+}
+
+function renameTab(cm, e, id) {
+  const selTab = parseInt(e.target.id.split("_")[2]);
+  if (selTab == ssParam.activeTab ) {
+    e.preventDefault();
+    ssParam.renameDiv.childNodes[0].value = "";
+    ssParam.renameDiv.style.display = "block";
+    ssParam.renameDiv.style.top = (e.target.getBoundingClientRect().top + 20) + "px";
+    ssParam.renameDiv.style.left = (e.target.getBoundingClientRect().left) + "px";
+  }
 }
 
 function mouseMove(cm, e, id) {
@@ -289,8 +304,10 @@ function mouseDownInner(cm, e, id) {
     e.preventDefault();
     if (ssParam.endpointBrowserLink) {
       let url = "https://sparql-support.dbcls.jp/endpoint-browser.html";
+      let endpoint = encodeURIComponent(extractEndpoint(cm.getValue()));
+      if (!endpoint && ssParam.defaultEndpoint[id]) endpoint = ssParam.defaultEndpoint[id];
       window.open(url
-		  + "?endpoint=" + encodeURIComponent(extractEndpoint(cm.getValue()))
+		  + "?endpoint=" + endpoint
 		  + "&node=" + node
 		  + "&graphs="
 		  + "&limit=100"
@@ -371,7 +388,7 @@ function setTabLabel(id){
   for (let i = 0; i <= tabNum; i++) {
     if (document.getElementById("query_tab_" + i + "_" + id)) {
       const text = localStorage[ssParam.pathName + '_sparql_code_' + i + "_" + id];
-      if (text && text.match(/#\s+\@label +\w+/)) document.getElementById("query_tab_" + i + "_" + id).innerHTML = text.match(/#\s+\@label +(\w+)/)[1];
+      if (text && text.match(/#\s+\@label +\w+/)) document.getElementById("query_tab_" + i + "_" + id).innerHTML = text.match(/#\s+\@label +([^\s]+)/)[1];
       else document.getElementById("query_tab_" + i + "_" + id).innerHTML = i + 1;
       setQueryTabWidth(tabNum, id);
     }
@@ -388,8 +405,10 @@ function tabKeyDown(cm, caret, id, shiftKey){
   if (!ssParam.termFrag) getTermFrag(cm, caret);
   if (caret.line == 0 && ((ssParam.queryFormer.match(/^##+$/) && ssParam.termFrag.match(/^##+$/))
 			  || (ssParam.queryFormer.match(/^##+ *$/) && ssParam.termFrag.toLowerCase().match(/^endpoint$/))
-			  || (ssParam.queryFormer.match(/^# +\@$/) && ssParam.termFrag.toLowerCase().match(/^\@endpoint$/))
-			  || (ssParam.queryFormer.toLowerCase().match(/^##+ *endpoint $/) && ssParam.termFrag.match(/^http$/)))) string = autoCompletionEndpoint();
+			  || (ssParam.queryFormer.match(/^# *\@$/) && ssParam.termFrag.match(/^#{0,1}\@$/))
+			  || (ssParam.queryFormer.match(/^# *\@$/) && ssParam.termFrag.toLowerCase().match(/^#{0,1}\@endpoint$/))
+			  || ssParam.queryFormer.toLowerCase().match(/^# +\@endpoint +http[^\s]+$/))) string = autoCompletionEndpoint();
+  else if (caret.line != 0 && ssParam.queryFormer.match(/^# *\@$/) && ssParam.termFrag.match(/^#{0,1}\@$/)) string = autoCompletionSparqlDoc();
   else if (!ssParam.queryFormer && ssParam.termFrag.match(/^C$/) && caret.line == 0) { string = "COPY" }
   else if (!ssParam.queryFormer && ssParam.termFrag.match(/^D[Ee][Ff]$/)) { string = "DEFINE sql:select-option \"order\"" }
   else if (!ssParam.termFrag) return [false, false];
@@ -504,9 +523,14 @@ function tabKeyDown(cm, caret, id, shiftKey){
 
   function autoCompletionEndpoint(){
     let domain = getDomain(ssParam.pathName);
-    let string = "## endpoint ";
-    if (ssParam.termFrag.toLowerCase().match(/endpoint/)) string = ssParam.termFrag + " ";
-    else if (ssParam.termFrag == "http") string = "";
+    if (! ssParam.preString.toLowerCase().match(/endpoint/)) {
+      ssParam.preString = ssParam.queryFormer + ssParam.termFrag;
+      if (ssParam.preString.toLowerCase().match(/^## +endpoint/)) ssParam.preString = ssParam.preString
+	.replace(/^##/, "#")
+	.replace(/ [Ee][Nn][Dd][Pp][Oo][Ii][Nn][Tt]/, " @endpoint")
+	.replace(/@@endpoint/, " @endpoint");
+    }
+    let string = "# @endpoint ";
     let next = "";
     if (localStorage[domain + '_endpoint_list']) {
       let pre = ssParam.termFragTmp;
@@ -519,7 +543,7 @@ function tabKeyDown(cm, caret, id, shiftKey){
 	    if (endpoints[i + 1]) next = endpoints[i + 1];
 	    else next = endpoints[0];
 	    break;
-	  } else if (!endpoints[i + 1])next = endpoints[0];
+	  } else if (!endpoints[i + 1]) next = endpoints[0];
 	}
       }
     }
@@ -530,6 +554,17 @@ function tabKeyDown(cm, caret, id, shiftKey){
     return string;
   }
 
+  function autoCompletionSparqlDoc(){
+    let docs = ["# @label", "# @param", "# @debug true", "# @temp-proxy true", "# @"];
+    if (!ssParam.preString) ssParam.preString = "# @";
+    if (!ssParam.preString || ssParam.preString == docs[docs.length - 1]) return docs[0];
+    else {
+      for (let i = 0; i < docs.length; i++) {
+	if (ssParam.preString == docs[i]) return docs[i + 1];
+      }
+    }
+  }
+  
   function copyPrefix(cm, id){
     let copy = ssParam.queryFormer.toUpperCase();
     let tarTab = parseInt(ssParam.termFrag.replace(/^#/, "")) - 1;
@@ -643,7 +678,7 @@ function chkQueryPrefix(id){
   }
   text = text.replace(/#[^\n]+\n/g, "\n");
   text = text.replace(/\<https*:\/\/[^\>\s]+/g, "\n");
-  text = text.toLowerCase().replace(/^\s*define\s+\w+:.*/g, "\n");
+  text = text.replace(/^\s*[Dd][Ee][Ff][Ii][Nn][Ee]\s+\w+:.*/g, "\n");
   let strings = text.replace(/\s+/g, " ").split(" ");
   for (let i = 0; i < strings.length; i++) {
     let words = strings[i].split(/[ \(\)\{\}\[\],\/\|\^]+/);
@@ -931,8 +966,8 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	  }
 	}
       }
-     resTime.appendChild(document.createTextNode("[ " + count + " triples. -- " + sec + " sec. ]"));
-
+      resTime.appendChild(document.createTextNode("[ " + count + " triples. -- " + sec + " sec. ]"));
+      
       if (ssParam.activeTab == runTab) {
 	let resDiv = document.createElement("div");
 	let resTable = document.createElement("table");
@@ -1013,7 +1048,7 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	  resTr.appendChild(resTd);
 	}
 	resTbody.appendChild(resTr);
-	if ((i != 0 && (i + 1) % ssParam.delayRenderUnit == 0) || i + 1 == res.results.bindings.length) {
+	if ((i != 0 && (i + 1) % ssParam.delayRenderUnit == 0 ) || i + 1 == res.results.bindings.length) {
 	  resTbodyList.push(resTbody);
 	  resTbody = document.createElement("tbody");
 	}
@@ -1169,6 +1204,10 @@ function renderResultTable(id, res) {
   ssParam.resultNode[id].appendChild(resDiv);
   setTimeout(()=>{res.time.scrollIntoView();}, 10);
   ssParam.subResNode[id].style.display = "none";
+  if (id.match(/^slsTa_/)) { // for SPARQList support
+    resDiv.append(res.json);
+    document.getElementById("inner_result_json_" + id).style.display ="none";
+  }
 }
 
 function renderResultJson(id, res) {
@@ -1623,7 +1662,41 @@ function initDiv(cm, id){
   debugDiv.appendChild(commandUl);
   commandUl.className = "debug_command debug";
   ssParam.debugDiv = debugDiv;
-  
+
+  // popuo div for rename
+  newNode = document.createElement("div");
+  let renameDiv = codeMirrorDiv.parentNode.insertBefore(newNode, clipboardNode.nextSibling);
+  let nameBox = document.createElement("input");
+  nameBox.type = "text";
+  nameBox.size = "14";
+  nameBox.addEventListener("keydown", function(e) {
+    if (e.key == 'Enter') {
+      e.preventDefault();
+      if (nameBox.value) {
+	console.log(nameBox.value);
+	let sparqlQuery = ssParam.textarea[id].value;
+	let lines = sparqlQuery.split(/\n/);
+	if (sparqlQuery.match(/\n# @label /)) {
+	  for (let i = 0; i < lines.length; i++) {
+	    if (lines[i].match(/^# @label/)){
+	      lines[i] = "# @label " + nameBox.value;
+	      break;
+	    }
+	  }
+	} else {
+	  if (lines[0].toLowerCase().match(/^#+ *\@*endpoint/)) lines[0] = lines[0] + "\n# @label " + nameBox.value;
+	  else lines[0] = "# @label " + nameBox.value + "\n" + lines[0];
+	}
+	ssParam.textarea[id].value = lines.join("\n");
+	setCmDiv(cm, id);
+      }
+      renameDiv.style.display = "none";
+    }
+  })
+  renameDiv.id = "rename_tab_div";
+  renameDiv.className = "rename_popup";
+  renameDiv.appendChild(nameBox);
+  ssParam.renameDiv = renameDiv;
   saveCode(cm, id);
 }
 
@@ -1712,7 +1785,7 @@ function initQueryTabs(cm, id){
       }
     }
   };
-  
+
   ssParam.textarea[id].value = localStorage[ssParam.pathName + '_sparql_code_' + ssParam.activeTab + '_' + id];
   setCmDiv(cm, id);
 }
@@ -1867,8 +1940,8 @@ function changeTab(cm, newTab, id){
       renderResultJson(id, newRes);
     }
   }
-
-  cm.clearHistory();  
+  
+  cm.clearHistory();
   resetDescribeLog();
 }
 
@@ -2453,3 +2526,4 @@ function isJson(arg){
     return false;
   }
 }
+
