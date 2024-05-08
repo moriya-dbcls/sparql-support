@@ -319,6 +319,12 @@ div.debug_popup {
     z-index: 10;
 }
 
+div.rename_popup {
+    display: none;
+    position: absolute;
+    z-index: 10;
+}
+
 ul.debug_command {
     margin: 0px;
     padding: 0px;
