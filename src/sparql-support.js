@@ -304,10 +304,8 @@ function mouseDownInner(cm, e, id) {
     e.preventDefault();
     if (ssParam.endpointBrowserLink) {
       let url = "https://sparql-support.dbcls.jp/endpoint-browser.html";
-      let endpoint = encodeURIComponent(extractEndpoint(cm.getValue()));
-      if (!endpoint && ssParam.defaultEndpoint[id]) endpoint = ssParam.defaultEndpoint[id];
       window.open(url
-		  + "?endpoint=" + endpoint
+		  + "?endpoint=" + ssParam.formNode[id].action
 		  + "&node=" + node
 		  + "&graphs="
 		  + "&limit=100"
