@@ -319,12 +319,12 @@ function mouseDownInner(cm, e, id) {
   } else if (e.target.id == "cm-ss_prev_subres_li") {
     ssParam.subResNode[id].innerHTML = "";
     ssParam.describeTarget--;
-    setSubResButton(id);
+    ssParam.subResNode[id].appendChild(ssParam.describeLog[ssParam.describeTarget]);
     ssParam.subResNode[id].appendChild(ssParam.describeLog[ssParam.describeTarget]);
   } else if (e.target.id == "cm-ss_next_subres_li") {
     ssParam.subResNode[id].innerHTML = "";
     ssParam.describeTarget++;
-    setSubResButton(id);
+    ssParam.subResNode[id].appendChild(ssParam.describeLog[ssParam.describeTarget]); 
     ssParam.subResNode[id].appendChild(ssParam.describeLog[ssParam.describeTarget]);
   } else if (e.target.closest("#res_div_query")) {
     delayRendering(id);
