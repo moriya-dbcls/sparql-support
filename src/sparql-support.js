@@ -768,14 +768,14 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 		  status: res.status + " " + res.statusText};
       if (res.status == "405") {
 	obj.text = "Please check the endpoint in the first line.\n\ne.g.\n'## endpoint http://example.org/endpoint'\n";
-      } else if (res.headers.get('content-type').match('text\/plain')) {
+      } else if (res.headers.get('content-type').match('text/plain')) {
 	obj.text = await res.text();
       } else if (res.headers.get('content-type').match('application/json')) {
 	res = await res.json();
 	obj.text = res.message + "\n\n" + res.data;
       }
       return obj;
-    } else if (res.headers.get('content-type') && res.headers.get('content-type').match('text\/html')) {
+    } else if (res.headers.get('content-type') && res.headers.get('content-type').match('text/html')) {
       let html = await res.text();
       let message_text = "endpoint error\n\nPlease set an endpoint in the first line.\n\ne.g.\n'## endpoint http://example.org/endpoint'\n";
       if (html.match(/SPARQL support proxy message/)) message_text = html;
@@ -783,6 +783,8 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	       status: "",
 	       text: message_text
 	     };
+    } else if (res.headers.get('content-type').match(/text\/turtle|application\/n-triples/)) {
+      return {turtle: await res.text()};
     }
     return res.json();
   }
@@ -811,7 +813,7 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
   //// output result to inner html
   let outResult = function(id, res, runId, endpoint, describe, searchPredicate){
     let endTime = Date.now();
-    let vars = ["s", "p ", "o"]; //describe
+    let vars = ["s", "p", "o"]; //describe
     if (res.head && res.head.vars) vars = res.head.vars;
     let resTime = document.createElement("p");
     let resThead = document.createElement("thead");
@@ -882,7 +884,7 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
       }
     }
     
-    if (describe) {  // describe result (JSON-LD)
+    if (describe || res.turtle) {  // describe result (JSON-LD or N-triple(=Qlever turtle))
       let resTbody = document.createElement("tbody");
       let addRow = function(triple){
 	let resTr = document.createElement("tr");
@@ -909,7 +911,7 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	    let datatype = false;
 	    if (value["@type"]) datatype = value["@type"].replace(/http:\/\/www\.w3\.org\/2001\/XMLSchema#/, "xsd:");
 	    else if (triple[1]["@type"]) datatype = triple[1]["@type"].replace(/http:\/\/www\.w3\.org\/2001\/XMLSchema#/, "xsd:");
-	    if(typeof(text) == "string" && !value["@id"] && (!datatype || (datatype && datatype == "xsd:string"))) text = '"' + text + '"';
+	    if(describe != text && !text.match(/^_:/) && typeof(text) == "string" && !value["@id"] && (!datatype || (datatype && datatype == "xsd:string"))) text = '"' + text + '"';
 	    let resSpan = document.createElement("span");
 	    resSpan.className = "instance";
 	    resSpan.appendChild(document.createTextNode(text));
@@ -923,44 +925,59 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	return resTr;
       }
 
-      let graphs = [res];
-      if (res["@graph"]) graphs = res["@graph"];
       let count = 0;
-      for (let graph of graphs) {
-	for (let item in graph) {
-	  if (item == "@type") {
-	    let types = [graph["@type"]];
-	    if (Array.isArray(graph["@type"])) types = graph["@type"];
-	    for (let type of types) {
-	      resTbody.appendChild(addRow([{"@id": graph["@id"]}, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", {"@id": type}]));
-	      count++;
-	    }
-	    continue;
+      if (res.turtle) { // for Qlever
+	for (let line of res.turtle.split(/\n/)) {
+	  const regex = /^\s*(<[^>]+>|_:[^\s]+)\s+(<[^>]+>)\s+(<[^>]+>|_:[^\s]+|".*"(?:@[a-zA-Z-]+|(?:\^\^<[^>]+>))?)\s*\.\s*$/;
+	  const match = line.match(regex);
+	  console.log(line);
+	  if (match) {
+	    const s = match[1].replace(/^</, "").replace(/>$/,"").replace(/^"/, "").replace(/"$/,"");
+	    const p = match[2].replace(/^</, "").replace(/>$/,"").replace(/^"/, "").replace(/"$/,"");
+	    const o = match[3].replace(/^</, "").replace(/>$/,"").replace(/^"/, "").replace(/"$/,"");
+	    resTbody.appendChild(addRow([s, p, o]));
+	    count++;
 	  }
-	  if (item.match(/^\@/)) continue;
-	  let p = item;
-	  if (graph["@context"] || res["@context"]) {
-	    let context = {};
-	    if (graph["@context"]) context = Object.assign(context, graph["@context"]);
-	    else if (res["@context"]) context = Object.assign(context, res["@context"]);
-	    if (context[p]) p = context[p];
-	    else {
-	      for (let key in context) {
-		if (context[key]["@id"] == p){
-		  p = context[key];
-		  break;
+	}
+      } else {
+	let graphs = [res];
+	if (res["@graph"]) graphs = res["@graph"];
+	for (let graph of graphs) {
+	  for (let item in graph) {
+	    if (item == "@type") {
+	      let types = [graph["@type"]];
+	      if (Array.isArray(graph["@type"])) types = graph["@type"];
+	      for (let type of types) {
+		resTbody.appendChild(addRow([{"@id": graph["@id"]}, "http://www.w3.org/1999/02/22-rdf-syntax-ns#type", {"@id": type}]));
+		count++;
+	      }
+	      continue;
+	    }
+	    if (item.match(/^\@/)) continue;
+	    let p = item;
+	    if (graph["@context"] || res["@context"]) {
+	      let context = {};
+	      if (graph["@context"]) context = Object.assign(context, graph["@context"]);
+	      else if (res["@context"]) context = Object.assign(context, res["@context"]);
+	      if (context[p]) p = context[p];
+	      else {
+		for (let key in context) {
+		  if (context[key]["@id"] == p){
+		    p = context[key];
+		    break;
+		  }
 		}
 	      }
 	    }
-	  }
-	  if (Array.isArray(graph[item])) {
-	    for (let o of graph[item]) {
-	      resTbody.appendChild(addRow([{"@id": graph["@id"]}, p, o]));
+	    if (Array.isArray(graph[item])) {
+	      for (let o of graph[item]) {
+		resTbody.appendChild(addRow([{"@id": graph["@id"]}, p, o]));
+		count++;
+	      }
+	    } else {
+	      resTbody.appendChild(addRow([{"@id": graph["@id"]}, p, graph[item]]));
 	      count++;
 	    }
-	  } else {
-	    resTbody.appendChild(addRow([{"@id": graph["@id"]}, p, graph[item]]));
-	    count++;
 	  }
 	}
       }
@@ -974,7 +991,7 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	resTable.id = "inner_describe_table_" + id;
 	resTable.className = "inner_result_table";
 	p.className = "inner_result_sub_title";
-	p.appendChild(document.createTextNode("DESCRIBE <" + describe + ">"));
+	if (describe) p.appendChild(document.createTextNode("DESCRIBE <" + describe + ">"));
 	resDiv.appendChild(p);
 	resDiv.appendChild(resTime);
 	resDiv.appendChild(resTable);
@@ -1141,7 +1158,7 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
       'Content-Type': 'application/x-www-form-urlencoded'
     }
   };
-  if (describe) options.headers['Accept'] = 'application/ld+json, application/rdf+json';
+  if (describe) options.headers['Accept'] = 'application/ld+json, application/rdf+json, application/n-triples, text/turtle';
 
   // relay https://sparql-support.dbcls.jp/api/relay for 'HTTP'-endpoint from 'HTTPS'-SPARQL_spport (for SSL Mixed Content)
   let original_endpoint = false;
