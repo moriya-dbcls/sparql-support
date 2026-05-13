@@ -333,7 +333,6 @@ function mouseDownInner(cm, e, id) {
 
 function keyDownInner(cm, e, id){
   if (e.altKey && document.getElementById("popup_eb_flag")) {
-    console.log("hoge");
     document.getElementById("popup_eb_flag").style.display = 'block';
     ssParam.endpointBrowserLink = true;
   } else if ((e.metaKey || e.ctrlKey) && e.key == 'f') { // web browser search
@@ -930,7 +929,6 @@ async function innerModeRunQuery(queryTab, id, describe, expQuery){
 	for (let line of res.turtle.split(/\n/)) {
 	  const regex = /^\s*(<[^>]+>|_:[^\s]+)\s+(<[^>]+>)\s+(<[^>]+>|_:[^\s]+|".*"(?:@[a-zA-Z-]+|(?:\^\^<[^>]+>))?)\s*\.\s*$/;
 	  const match = line.match(regex);
-	  console.log(line);
 	  if (match) {
 	    const s = match[1].replace(/^</, "").replace(/>$/,"").replace(/^"/, "").replace(/"$/,"");
 	    const p = match[2].replace(/^</, "").replace(/>$/,"").replace(/^"/, "").replace(/"$/,"");
@@ -1655,7 +1653,8 @@ function initDiv(cm, id){
     { command: "subject", label: " - Subject"},
     { command: "predicate", label: " - Predicate"},
     { command: "object", label: " - Object"},
-    { command: "triple", label: " - Triple pattern"}
+    { command: "triple", label: " - Triple pattern"},
+    { command: "graph", label: " - Graph"}
   ];
   for (let d of debugCommands) {
     let commandLi = document.createElement("li");
@@ -2370,7 +2369,7 @@ function ssCommand(cm, id, caret, line){
 function debugQuery(id, command) {
   let sparqlQuery = ssParam.textarea[id].value;
   let debugText = ssParam.debugText;
-  if (command == "triple") {
+  if (command == "triple" || command == "graph") {
     // remove last semicolon or period
     if (debugText.match(/[;\.]\s*$/)) debugText = debugText.replace(/[;\.]\s*$/, "");
     // add close blank brackets
@@ -2386,24 +2385,27 @@ function debugQuery(id, command) {
 	.replace(/\s*$/, "").split(/ +/).length == 2) {
       debugText = "?s " + debugText;
     }
+    if (command == "graph") debugText = "GRAPH ?g { " + debugText + " }";
   }
   let lines = sparqlQuery.split(/\n/);
   let expQuery = "";
   let selectFlag = false;
   for (let line of lines) {
     if (line.toUpperCase().match(/^\s*SELECT /)) {
-      expQuery += "SELECT *\n";
+      if (command == "graph") expQuery += "SELECT DISTINCT ?g\n";
+      else expQuery += "SELECT *\n";
       selectFlag = true;
-    } else if (line.toUpperCase().match(/^\s*WHERE /)) {
+    } else if (line.toUpperCase().match(/^\s*WHERE/)) {
       expQuery += "WHERE {\n  ";
       if (command == "subject") expQuery += debugText + " ?p ?o";
       else if (command == "predicate") expQuery += "?s " + debugText + " ?o";
       else if (command == "object") expQuery += "?s ?p " + debugText;
-      else if (command == "triple") expQuery += debugText;
-      expQuery += " .\n}\nLIMIT " + ssParam.debugLimit;
+      else if (command == "triple" || command == "graph") expQuery += debugText;
+      expQuery += " .\n}";
+      if (command != "graph") expQuery += "\nLIMIT " + ssParam.debugLimit;
       break;
     } else {
-      if (!selectFlag || (selectFlag && line.toUpperCase().match(/^\s*FROM /))) {
+      if (!selectFlag || (selectFlag && line.toUpperCase().match(/^\s*FROM /) && command != "graph")) {
 	expQuery += line + "\n";
       }
     }
