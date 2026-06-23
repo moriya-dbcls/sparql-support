@@ -16,7 +16,7 @@
     "prepare": "npm run build"
   },
   "devDependencies": {
-    "rollup": "^1.1.0",
+    "rollup": "^2.79.2",
     "rollup-plugin-replace": "^2.2.0"
   },
   "peerDependencies": {
