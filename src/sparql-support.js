@@ -2275,10 +2275,41 @@ async function popupCopyForm(){
   }
 }
 
+// is.gd
+/*
 async function setShortUrl(){
   let string = await makeSparqlQueryLink();
   let json = await fetch("https://is.gd/create.php?format=json&url=" + encodeURIComponent(string)).then(res=>res.json());
   document.getElementById("shortUrlRadio").alt = json.shorturl;
+}
+*/
+
+async function setShortUrl() {
+  const string = await makeSparqlQueryLink();
+  const shortUrlRadio = document.getElementById("shortUrlRadio");
+
+  try {
+    const response = await fetch("https://spoo.me/api/v1/shorten", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      },
+      body: JSON.stringify({
+        url: string
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const json = await response.json();
+    shortUrlRadio.alt = json.short_url;
+  } catch (error) {
+    console.warn("Failed to shorten the URL. Using the original URL instead.", error);
+    shortUrlRadio.alt = string;
+  }
 }
 
 function showAutoRunBox(f){
